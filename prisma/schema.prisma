@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  // I replaced env("DATABASE_URL") with the direct link to fix the error
+  url      = "mysql://root:@localhost:3306/normabeauti_db"
+}
+
+// User Model (For Login)
+model User {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  password          String
+  createdAt         DateTime @default(now())
+  isVerified        Boolean  @default(false)
+  verificationToken String?
+  customer          Customer?
+}
+
+// Customer Profile Model (For Details)
+model Customer {
+  id          Int      @id @default(autoincrement())
+  fullName    String
+  address     String
+  phoneNumber String
+  dob         DateTime?
+  gender      String?
+   
+  // Connect to the User table
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id])
+}
