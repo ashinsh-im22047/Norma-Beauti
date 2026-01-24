@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "mysql"
-  // I replaced env("DATABASE_URL") with the direct link to fix the error
   url      = "mysql://root:@localhost:3306/normabeauti_db"
 }
 
@@ -14,8 +13,16 @@ model User {
   email             String   @unique
   password          String
   createdAt         DateTime @default(now())
+  
+  // Verification Fields
   isVerified        Boolean  @default(false)
   verificationToken String?
+
+  // --- NEW FIELDS FOR PASSWORD RESET (Moved Inside!) ---
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  // ----------------------------------------------------
+
   customer          Customer?
 }
 

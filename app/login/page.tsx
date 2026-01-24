@@ -113,7 +113,7 @@ export default function Login() {
 
               {/* Links */}
               <div className="text-center flex flex-col gap-2 mt-2">
-                 <a href="#" className="text-[#403b58] text-sm font-semibold hover:underline">
+                 <a href="/forgot-password" className="text-[#403b58] text-sm font-semibold hover:underline">
                    Forgot your password?
                  </a>
                  <p className="text-[#403b58] text-sm">
