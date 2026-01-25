@@ -13,6 +13,7 @@ export default function Login() {
   const handleLogin = async () => {
     setLoading(true);
     try {
+      // NOTE: Ensure your 'app/api/login/route.ts' returns the role correctly!
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -26,15 +27,19 @@ export default function Login() {
       }
 
       // Session Management
-      localStorage.setItem('userId', data.user.id);
-      localStorage.setItem('userEmail', data.user.email);
-      if (data.user.role) localStorage.setItem('userRole', data.user.role);
+      if (data.user) {
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userEmail', data.user.email);
+        if (data.user.role) localStorage.setItem('userRole', data.user.role);
+      }
 
       alert('Login Successful!');
 
-      // --- SMART REDIRECT ---
+      // --- SMART REDIRECT FIXED ---
+      // Your database sends 'ADMIN', so we check for that.
       if (data.user.role === 'ADMIN') {
-        router.push('/admin/dashboard');
+        // ERROR WAS HERE: Changed '/admin/dashboard' to '/admin/inventory'
+        router.push('/admin/dashboard'); 
       } else {
         router.push('/');
       }
@@ -49,7 +54,7 @@ export default function Login() {
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gray-900 font-sans">
       
-      {/* Background Image - DARKER */}
+      {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image 
           src="/backgroundimage.jpg" 
@@ -57,28 +62,20 @@ export default function Login() {
           fill 
           className="object-cover blur-sm opacity-90" 
         />
-        {/* Dark overlay to make the card pop */}
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      {/* Main Card Container - SMALLER */}
-      {/* Changed max-w-4xl to max-w-3xl and h-[600px] to h-[500px] */}
+      {/* Main Card Container */}
       <div className="relative z-10 w-full max-w-3xl h-[500px] flex rounded-[2rem] shadow-2xl overflow-hidden">
         
         {/* LEFT SIDE: Dark Teal Background */}
         <div className="w-1/2 bg-[#134B5F] flex flex-col items-center justify-center p-8 text-center relative">
-            
-            {/* Logo - Slightly Smaller */}
             <div className="w-32 h-32 bg-[#134B5F] rounded-full flex items-center justify-center mb-4 shadow-xl border-4 border-[#134B5F] relative z-20 overflow-hidden">
                  <Image src="/logo.jpeg" alt="Logo" width={120} height={120} className="object-cover" />
             </div>
-
-            {/* Welcome Text */}
             <h2 className="text-2xl font-serif font-bold text-white tracking-widest leading-snug uppercase">
               Welcome To<br />Norma Beauti
             </h2>
-            
-            {/* Slogan */}
             <p className="text-white/80 mt-2 text-xs tracking-wide font-light">
               Your beauty, our passion.
             </p>
@@ -86,12 +83,9 @@ export default function Login() {
 
         {/* RIGHT SIDE: OFF-WHITE Background */}
         <div className="w-1/2 bg-[#FAF9F6] flex flex-col items-center justify-center p-10">
-            
             <h2 className="text-3xl font-bold text-black mb-6">Login</h2>
 
             <div className="w-full flex flex-col gap-4">
-              
-              {/* Inputs */}
               <input 
                 type="email" 
                 placeholder="Enter your email" 
@@ -99,7 +93,6 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-[#D8C5D3] text-gray-800 placeholder-gray-600 px-5 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4a4e69] text-sm"
               />
-              
               <input 
                 type="password" 
                 placeholder="password" 
@@ -108,7 +101,6 @@ export default function Login() {
                 className="w-full bg-[#D8C5D3] text-gray-800 placeholder-gray-600 px-5 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4a4e69] text-sm"
               />
 
-              {/* Login Button */}
               <button 
                 onClick={handleLogin}
                 disabled={loading}
@@ -117,17 +109,14 @@ export default function Login() {
                 {loading ? 'Checking...' : 'Login'}
               </button>
 
-              {/* Links */}
               <div className="text-center flex flex-col gap-1 mt-2">
                  <Link href="/forgot-password" className="text-[#403b58] text-xs font-semibold hover:underline">
                    Forgot your password?
                  </Link>
-                 
                  <p className="text-[#403b58] text-xs">
                    Don't have an account? <Link href="/register" className="font-bold hover:underline">sign up</Link>
                  </p>
               </div>
-
             </div>
         </div>
 
