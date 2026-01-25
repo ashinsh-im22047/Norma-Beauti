@@ -57,7 +57,6 @@ export default function InventoryManagement() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- CLEAN DELETE FUNCTION ---
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault(); 
     e.stopPropagation(); 
@@ -68,8 +67,8 @@ export default function InventoryManagement() {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       
       if (res.ok) {
-        setActiveMenuId(null);   // Close menu
-        await fetchCategories(); // Silent reload
+        setActiveMenuId(null);   
+        await fetchCategories(); 
       } else {
         alert("Failed to delete category.");
       }
@@ -78,7 +77,6 @@ export default function InventoryManagement() {
     }
   };
 
-  // --- CLEAN SAVE FUNCTION ---
   const handleSave = async () => {
     const payload = { name: currentCat.name, description: currentCat.description };
     try {
@@ -172,7 +170,7 @@ export default function InventoryManagement() {
                     </button>
                     <button 
                       onClick={(e) => handleDelete(e, cat.categoryid)}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-600 flex items-center gap-2"
                     >
                       🗑️ Delete
                     </button>
@@ -180,7 +178,7 @@ export default function InventoryManagement() {
                 )}
               </div>
 
-              {/* --- CLICKABLE CARD --- */}
+              {/* --- CLICKABLE CARD -> NAVIGATES TO PRODUCT PAGE --- */}
               <Link href={`/admin/inventory/products?category=${cat.categoryid}`}>
                 <div className="bg-[#94A3B8] h-60 rounded-2xl p-6 flex flex-col justify-center items-center text-center shadow-md transition transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
                   <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 shadow-sm">

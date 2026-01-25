@@ -73,6 +73,7 @@ export async function GET(req: Request) {
 
     } else {
        // Fetch from PRODUCT table (For Individual & Custom)
+       // We now include 'custom_status' in the select
        const [rows]: any = await db.query('SELECT * FROM product');
        
        const formatted = rows.map((r: any) => ({
@@ -81,7 +82,8 @@ export async function GET(req: Request) {
          price: r.price, 
          quantity: r.availablequantity, 
          desc: r.productdescription, 
-         image: r.imageurl, 
+         image: r.imageurl,
+         status: r.custom_status || 'pending', // NEW FIELD
          type: 'product'
        }));
        return NextResponse.json(formatted);
