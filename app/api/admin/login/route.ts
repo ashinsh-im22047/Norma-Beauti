@@ -12,34 +12,26 @@ export async function POST(request: Request) {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // 2. Check Verification
-    if (!user.isVerified) {
-      return NextResponse.json({ 
-        error: 'Please verify your email before logging in.' 
-      }, { status: 403 });
+    // 2. CHECK IF ADMIN (Crucial Security Step)
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Access Denied: You are not an Admin' }, { status: 403 });
     }
 
     // 3. Check Password
     const passwordMatch = await bcrypt.compare(password, user.password);
-
     if (!passwordMatch) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // 4. Success - IMPORTANT: We must send the 'role' here!
     return NextResponse.json({ 
-      message: 'Login successful', 
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        role: user.role // <--- THIS LINE IS CRITICAL
-      } 
+        message: 'Admin Login Successful', 
+        user: { id: user.id, email: user.email, role: user.role } 
     });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Login error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

@@ -28,7 +28,7 @@ export default function ResetPassword() {
       
       if (res.ok) {
         alert("Password successfully reset! Logging you in...");
-        router.push('/'); // Go to Home Page
+        router.push('/login'); // Go to login Page
       } else {
         alert(data.error || "Failed to reset password");
       }
