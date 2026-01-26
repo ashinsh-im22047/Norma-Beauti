@@ -1,168 +1,140 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import CustomerHeader from '@/components/CustomerHeader'; 
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null); 
   
-  // Form State
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', address: '', dob: '', gender: ''
   });
 
-  // Fetch Data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProfile = async () => {
       try {
-        const res = await fetch('/api/profile');
+        const storedUserId = localStorage.getItem('userId');
+        const url = storedUserId ? `/api/profile?id=${storedUserId}` : '/api/profile';
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
-          setUser(data);
+          setCurrentUser(data);
           setFormData({
-            name: data.name || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            address: data.address || '',
-            dob: data.dob ? data.dob.split('T')[0] : '',
-            gender: data.gender || ''
+            name: data.name || '', email: data.email || '', phone: data.phone || '',
+            address: data.address || '', dob: data.dob || '', gender: data.gender || ''
           });
         }
       } catch (err) { console.error(err); } 
       finally { setLoading(false); }
     };
-    fetchData();
+    fetchProfile();
   }, []);
 
-  // Save Data
   const handleSave = async () => {
+    if (!currentUser?.userid) return alert("Error: User ID missing");
     try {
       const res = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userid: user.userid, ...formData })
+        body: JSON.stringify({ userid: currentUser.userid, ...formData })
       });
-
-      if (res.ok) {
-        alert("Changes Saved!");
-      } else {
-        alert("Failed to save.");
-      }
+      if (res.ok) alert("Changes Saved!");
+      else alert("Failed to save.");
     } catch (err) { alert("Error saving."); }
   };
 
-  const handleLogout = () => router.push('/login');
+  const handleLogout = () => {
+    document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    localStorage.clear(); 
+    router.push('/login');
+  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-[#483D58]">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F3E6EF] to-[#E0B0D8] font-sans text-[#483D58] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#F3E6EF] to-[#E0B0D8] font-sans text-[#483D58]">
       
-      {/* Top Right Logo Badge */}
-      <div className="absolute top-8 right-8 z-20">
-         <div className="w-20 h-20 bg-[#134B5F]/90 backdrop-blur-sm rounded-full flex flex-col items-center justify-center shadow-2xl text-white font-serif text-xs text-center p-2 border-2 border-[#E0B0D8]">
-            <span className="text-lg">NB</span>
-            <span className="text-[8px] tracking-widest">NORMA</span>
-         </div>
-      </div>
+      <CustomerHeader />
 
-      {/* MAIN CONTAINER */}
-      <div className="container mx-auto px-4 h-screen flex items-center justify-center">
-        
+      <div className="container mx-auto px-4 min-h-[calc(100vh-80px)] flex items-start justify-center pt-10">
         <div className="flex flex-col md:flex-row w-full max-w-5xl gap-8">
             
-            {/* --- LEFT SIDEBAR (Profile Info) --- */}
+            {/* LEFT SIDEBAR */}
             <div className="md:w-1/3 flex flex-col items-center gap-6">
-                
-                {/* Avatar Circle */}
-                <div className="relative">
-                    <div className="w-32 h-32 bg-[#D9D9D9] rounded-full flex items-center justify-center text-5xl shadow-lg border-4 border-white text-gray-600">
-                        👤
-                    </div>
+                <div className="w-28 h-28 bg-[#D9D9D9] rounded-full flex items-center justify-center text-4xl shadow-lg border-4 border-white text-gray-600">
+                    👤
                 </div>
-                
-                <h2 className="text-2xl font-bold font-serif text-[#134B5F]">{formData.name || "User Name"}</h2>
+                <h2 className="text-2xl font-bold font-serif text-[#134B5F] text-center">{formData.name || "Guest User"}</h2>
 
-                {/* Navigation Buttons (Pill Shape from Reference) */}
-                <div className="flex flex-col gap-3 w-full max-w-xs mt-4">
-                    <button className="bg-[#EBC7E0]/80 hover:bg-[#EBC7E0] text-[#483D58] py-3 px-6 rounded-2xl font-bold text-left shadow-sm transition backdrop-blur-sm border border-white/40">
-                        My Orders
+                <div className="flex flex-col gap-3 w-full max-w-[220px] mt-2">
+                    <button className="bg-[#483D58] hover:bg-[#2e2a40] text-white py-3 px-6 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-3">
+                        <span>❤️</span> Wishlist
                     </button>
-                    <button className="bg-[#EBC7E0]/80 hover:bg-[#EBC7E0] text-[#483D58] py-3 px-6 rounded-2xl font-bold text-left shadow-sm transition backdrop-blur-sm border border-white/40">
-                        Contact Owner
+                    <button className="bg-[#483D58] hover:bg-[#2e2a40] text-white py-3 px-6 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-3">
+                        <span>📦</span> My Orders
                     </button>
-                    <button onClick={handleLogout} className="bg-[#EBC7E0]/80 hover:bg-red-200 text-[#483D58] py-3 px-6 rounded-2xl font-bold text-left shadow-sm transition backdrop-blur-sm border border-white/40">
-                        Logout
+                    <button className="bg-[#483D58] hover:bg-[#2e2a40] text-white py-3 px-6 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-3">
+                        <span>📞</span> Contact Owner
+                    </button>
+                    <button onClick={handleLogout} className="bg-white hover:bg-red-50 text-red-600 border-2 border-red-100 py-3 px-6 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-3">
+                        <span>🚪</span> Logout
                     </button>
                 </div>
             </div>
 
-            {/* --- RIGHT SIDE (Form Card) --- */}
+            {/* RIGHT SIDE (Form) */}
             <div className="md:w-2/3">
                 <div className="text-center mb-4">
                     <h1 className="text-3xl font-bold text-black font-serif">Account Details</h1>
                 </div>
 
-                <div className="bg-[#D9D9D9]/50 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-white/60">
-                    <h3 className="text-lg font-bold mb-6 text-black pl-2">Personal Details</h3>
+                <div className="bg-[#D9D9D9]/40 backdrop-blur-md rounded-[2rem] p-8 shadow-xl border border-white/40">
+                    <h3 className="text-sm font-bold mb-4 text-black pl-1">Personal Details</h3>
                     
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3">
                         
-                        {/* Name Field */}
-                        <div className="bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase">Name</label>
+                        {/* Name */}
+                        <div className="bg-[#EAE0E4]/80 p-2 rounded-lg px-4 border border-white/50">
+                            <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Name</label>
+                            <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="bg-transparent w-full text-gray-900 font-bold text-sm focus:outline-none"/>
+                        </div>
+
+                        {/* ✅ EMAIL FIELD (READ-ONLY & TRANSPARENT) */}
+                        <div className="bg-[#EAE0E4]/40 p-2 rounded-lg px-4 border border-white/20">
+                            <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Email</label>
                             <input 
-                              type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                              className="bg-transparent text-gray-900 font-medium focus:outline-none"
+                                type="email" 
+                                value={formData.email} 
+                                readOnly // 1. Prevents editing
+                                className="bg-transparent w-full text-gray-600 font-bold text-sm focus:outline-none opacity-50 cursor-not-allowed" // 2. Increases transparency
                             />
                         </div>
 
-                        {/* Email Field */}
-                        <div className="bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase">Email</label>
-                            <input 
-                              type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})}
-                              className="bg-transparent text-gray-900 font-medium focus:outline-none"
-                            />
+                        {/* Phone */}
+                        <div className="bg-[#EAE0E4]/80 p-2 rounded-lg px-4 border border-white/50 relative">
+                            <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Phone Number</label>
+                            <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="bg-transparent w-full text-gray-900 font-bold text-sm focus:outline-none"/>
+                            <span className="absolute right-4 top-4 text-[10px] font-bold text-gray-500">Home</span>
                         </div>
 
-                        {/* Phone Field */}
-                        <div className="bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50 relative">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase">Phone Number</label>
-                            <input 
-                              type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                              className="bg-transparent text-gray-900 font-medium focus:outline-none"
-                            />
-                            <span className="absolute right-4 top-4 text-xs font-bold text-gray-500">Home</span>
+                        {/* Address */}
+                        <div className="bg-[#EAE0E4]/80 p-2 rounded-lg px-4 border border-white/50">
+                            <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Address</label>
+                            <input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="bg-transparent w-full text-gray-900 font-bold text-sm focus:outline-none"/>
                         </div>
 
-                        {/* Address Field */}
-                        <div className="bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase">Address</label>
-                            <input 
-                              type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})}
-                              className="bg-transparent text-gray-900 font-medium focus:outline-none"
-                            />
-                        </div>
-
-                        {/* Row: DOB & Gender */}
-                        <div className="flex gap-4">
-                            <div className="w-1/2 bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase">Date of Birth</label>
-                                <input 
-                                  type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                                  className="bg-transparent text-gray-900 font-medium focus:outline-none w-full"
-                                />
+                        {/* DOB & Gender */}
+                        <div className="flex gap-3">
+                            <div className="w-1/2 bg-[#EAE0E4]/80 p-2 rounded-lg px-4 border border-white/50">
+                                <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Date of Birth</label>
+                                <input type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="bg-transparent w-full text-gray-900 font-bold text-sm focus:outline-none"/>
                             </div>
-                            <div className="w-1/2 bg-[#EAE0E4]/80 p-2 rounded-xl flex flex-col px-4 border border-white/50">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase">Gender</label>
-                                <select 
-                                  value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                                  className="bg-transparent text-gray-900 font-medium focus:outline-none w-full cursor-pointer appearance-none"
-                                >
+                            <div className="w-1/2 bg-[#EAE0E4]/80 p-2 rounded-lg px-4 border border-white/50">
+                                <label className="text-[9px] text-gray-500 font-bold uppercase block mb-1">Gender</label>
+                                <select value={formData.gender} onChange={(e) => setFormData({...formData, gender: e.target.value})} className="bg-transparent w-full text-gray-900 font-bold text-sm focus:outline-none cursor-pointer">
                                     <option value="">Select</option>
                                     <option value="Female">Female</option>
                                     <option value="Male">Male</option>
@@ -170,32 +142,16 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        {/* Save Button */}
-                        <div className="flex justify-end mt-4">
-                            <button 
-                              onClick={handleSave}
-                              className="bg-[#483D58] text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-[#352c42] transition transform hover:scale-105"
-                            >
+                        <div className="flex justify-end mt-2">
+                            <button onClick={handleSave} className="bg-[#483D58] text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg hover:bg-[#352c42] transition transform hover:scale-105">
                                 Save Changes
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
       </div>
-
-      {/* BOTTOM LEFT HOME BUTTON */}
-      <div className="fixed bottom-6 left-6 z-30">
-          <Link href="/" className="flex flex-col items-center group">
-              <div className="w-14 h-14 bg-[#483D58] text-white rounded-full flex items-center justify-center shadow-2xl group-hover:bg-[#134B5F] transition border-4 border-[#F3E6EF]">
-                  <span className="text-3xl">🏠</span>
-              </div>
-              <span className="text-xs font-bold text-[#483D58] mt-1 group-hover:text-[#134B5F]">Home</span>
-          </Link>
-      </div>
-
     </div>
   );
 }

@@ -26,19 +26,22 @@ export default function Login() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Session Management
+      // Session Management (LocalStorage)
       if (data.user) {
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('userEmail', data.user.email);
         if (data.user.role) localStorage.setItem('userRole', data.user.role);
       }
 
+      // ✅ NEW: Set the "Gatekeeper" Cookie
+      // This allows the Middleware to let you visit the Home Page
+      document.cookie = "user_session=true; path=/; max-age=86400"; 
+
       alert('Login Successful!');
 
       // --- SMART REDIRECT FIXED ---
       // Your database sends 'ADMIN', so we check for that.
       if (data.user.role === 'ADMIN') {
-        // ERROR WAS HERE: Changed '/admin/dashboard' to '/admin/inventory'
         router.push('/admin/dashboard'); 
       } else {
         router.push('/');

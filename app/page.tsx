@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import CustomerHeader from '@/components/CustomerHeader';
 
 // Define Category Options
 const CATEGORIES = [
   { id: 'cat_individual', name: 'Individual' },
   { id: 'cat_ready_box', name: 'Ready Made Boxes' },
-  { id: 'cat_custom_box', name: 'Customizable Boxes' }, 
+  { id: 'cat_custom_box', name: 'Customizable Boxes'}, 
 ];
 
 export default function CustomerHomePage() {
@@ -59,19 +60,14 @@ export default function CustomerHomePage() {
     fetchProductsByCategory(activeCategory);
   }, [activeCategory, fetchProductsByCategory]);
 
-  // --- 3. CLIENT-SIDE SEARCH & FILTER LOGIC ---
+  // --- 3. SEARCH & FILTER LOGIC ---
   useEffect(() => {
     let result = [...products];
-
-    if (searchTerm) {
-      result = result.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
+    if (searchTerm) result = result.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
     if (filterType === 'under-1000') result = result.filter(item => parseFloat(item.price) < 1000);
     if (filterType === 'under-5000') result = result.filter(item => parseFloat(item.price) < 5000);
-
     if (sortOption === 'price-low') result.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     else if (sortOption === 'price-high') result.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-
     setFilteredProducts(result);
   }, [searchTerm, sortOption, filterType, products]);
 
@@ -100,23 +96,9 @@ export default function CustomerHomePage() {
   return (
     <div className="min-h-screen bg-[#F3E6EF] font-sans text-[#483D58]">
       
-      {/* 1. NAVBAR (Sticky Top 0) */}
-      <nav className="bg-[#134B5F] text-white sticky top-0 z-50 shadow-lg h-16 flex items-center">
-        <div className="container mx-auto px-6 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#134B5F] font-bold text-lg">N</div>
-                <h1 className="text-xl font-bold tracking-widest font-serif">NORMA BEAUTI</h1>
-            </div>
-            <div className="flex items-center gap-6 font-semibold text-xs md:text-sm">
-               <Link href="/login" className="hover:text-[#E0B0D8] transition">Login</Link>
-               <Link href="/register" className="bg-[#E0B0D8] text-[#134B5F] px-4 py-1.5 rounded-full hover:bg-white transition font-bold">Sign Up</Link>
-               <Link href="/cart" className="relative hover:text-[#E0B0D8] transition text-lg">🛒<span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] w-3 h-3 flex items-center justify-center rounded-full">0</span></Link>
-               <Link href="/profile" className="hover:text-[#E0B0D8] transition text-lg">👤</Link>
-            </div>
-        </div>
-      </nav>
+      <CustomerHeader />
 
-      {/* 2. HERO TITLE (Scrolls Away) */}
+      {/* HERO TITLE */}
       <header 
         className="relative pt-10 pb-16 px-4 text-center bg-cover bg-center" 
         style={{ backgroundImage: "url('/backgroundHeaderHome.jpg')" }} 
@@ -124,48 +106,35 @@ export default function CustomerHomePage() {
         <div className="absolute inset-0 bg-[#483D58]/70"></div>
         <div className="relative z-10 max-w-4xl mx-auto text-white">
           <h2 className="text-3xl md:text-4xl font-serif mb-2 text-shadow-sm">Find Your Perfect Look</h2>
-          <p className="text-gray-200 text-sm md:text-base">Browse our exclusive collection of premium beauti items.</p>
+          <p className="text-gray-200 text-sm md:text-base">Browse our exclusive collection of premium cosmetics.</p>
         </div>
       </header>
 
-      {/* 3. STICKY SEARCH & FILTER BAR (Sticks below Navbar) */}
-      {/* top-16 ensures it sticks exactly below the 16px height navbar */}
-      <div className="sticky top-16 z-40 bg-[#483D58]/80 backdrop-blur-md shadow-xl border-y border-white/10 py-4 transition-all duration-300">
+      {/* STICKY SEARCH BAR */}
+      <div className="sticky top-20 z-40 bg-[#483D58]/80 backdrop-blur-md shadow-xl border-y border-white/10 py-4 transition-all duration-300">
          <div className="container mx-auto px-4">
-             
-             {/* Controls Container */}
              <div className="flex flex-col md:flex-row gap-3 items-center justify-center max-w-5xl mx-auto">
-                 
-                 {/* Search Input */}
                  <div className="w-full md:w-96 relative">
                     <span className="absolute left-4 top-2.5 text-[#483D58]/70">🔍</span>
                     <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-sm placeholder-[#483D58]/50 focus:outline-none focus:ring-2 focus:ring-[#E0B0D8] shadow-inner"/>
                  </div>
-
-                 {/* Dropdowns */}
                  <div className="flex gap-2 w-full md:w-auto">
                     <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-1/2 md:w-auto px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
                         <option value="all">All Prices</option><option value="under-1000">{'< 1000'}</option><option value="under-5000">{'< 5000'}</option>
                     </select>
                     <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="w-1/2 md:w-auto px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
-                        <option value="newest">Newest</option><option value="price-low">Price: Low</option><option value="price-high">Price: High</option>
+                        <option value="newest">Newest</option><option value="price-low">Price Low-High</option><option value="price-high">Price High-Low</option>
                     </select>
                  </div>
-
-                 {/* Category Buttons (Inline) */}
-                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 justify-center">
+                 
+                 {/* ✅ CATEGORIES: Added classes to hide scrollbar */}
+                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => setActiveCategory(cat.id)}
+                      <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
                         className={`px-3 py-2 rounded-full font-bold text-[10px] md:text-xs flex items-center gap-1 transition-all whitespace-nowrap border
-                          ${activeCategory === cat.id 
-                            ? 'bg-[#E0B0D8] text-[#134B5F] border-[#E0B0D8] shadow-md' 
-                            : 'bg-white/10 text-white border-white/30 hover:bg-white/20'
-                          }`}
-                      >
-                         {cat.name}
+                          ${activeCategory === cat.id ? 'bg-[#E0B0D8] text-[#134B5F] border-[#E0B0D8] shadow-md' : 'bg-white/10 text-white border-white/30 hover:bg-white/20'}`}>
+                        {cat.name}
                       </button>
                     ))}
                  </div>
@@ -173,7 +142,7 @@ export default function CustomerHomePage() {
          </div>
       </div>
 
-      {/* 4. MAIN CONTENT */}
+      {/* MAIN CONTENT */}
       <main className="container mx-auto px-6 py-8 relative z-20">
         
         {/* NEW ARRIVALS */}
@@ -216,12 +185,11 @@ export default function CustomerHomePage() {
         </div>
       </main>
 
-      {/* 5. FOOTER */}
+      {/* FOOTER */}
       <footer className="bg-[#134B5F] text-white text-center py-6 mt-8">
         <h2 className="text-lg font-bold font-serif mb-1">NORMA BEAUTI</h2>
         <p className="text-xs opacity-70">© 2026 All Rights Reserved.</p>
       </footer>
-
     </div>
   );
 }

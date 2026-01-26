@@ -3,49 +3,76 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
 export async function middleware(request: NextRequest) {
-  // 1. Get the path user is trying to visit
   const path = request.nextUrl.pathname;
   
-  // 2. Define which paths are protected
-  // This checks if the user is trying to go ANYWHERE inside /admin
-  const isAdminRoute = path.startsWith('/admin');
+  // -------------------------------------------------------------
+  // 1. ADMIN PROTECTION (Your Existing Secure Logic)
+  // -------------------------------------------------------------
+  if (path.startsWith('/admin')) {
+    const token = request.cookies.get('token')?.value;
 
-  // 3. Get the token from cookies
-  const token = request.cookies.get('token')?.value;
-
-  // --- SECURITY CHECK ---
-  if (isAdminRoute) {
-    
-    // CASE A: User has NO token (Not logged in at all)
     if (!token) {
-      // Redirect them to the Login page immediately
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
     try {
-      // CASE B: User HAS a token, but let's check if it's valid
       const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key');
       const { payload } = await jwtVerify(token, secret);
 
-      // CASE C: User is logged in, but is NOT an Admin (e.g. a customer trying to hack in)
       if (payload.role !== 'admin') {
+        // If not admin, kick them to customer home
         return NextResponse.redirect(new URL('/', request.url));
       }
-
-      // If we get here, the user is a valid Admin. Let them pass.
+      // Valid Admin -> Let them pass
       return NextResponse.next();
 
     } catch (error) {
-      // CASE D: Token is fake, expired, or tampered with
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
-  // Allow all other requests (like /login, /register, public pages) to pass
+  // -------------------------------------------------------------
+  // 2. CUSTOMER PROTECTION (New "Gatekeeper" Logic)
+  // -------------------------------------------------------------
+  
+  // Define which customer pages need the "Pass" (Cookie)
+  // We include '/' because you want to protect the Home Page too
+  const protectedCustomerPaths = ['/', '/profile', '/cart', '/shop'];
+  
+  const isProtectedCustomerPath = protectedCustomerPaths.some(p => 
+    path === p || path.startsWith(p + '/')
+  );
+
+  const userSession = request.cookies.get('user_session')?.value;
+
+  // RULE A: If trying to visit a protected page WITHOUT a session -> Go to Login
+  if (isProtectedCustomerPath && !userSession) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // RULE B: If user IS logged in, but tries to visit Login/Register -> Go to Home
+  // (Prevents them from seeing the login screen again unnecessarily)
+  if ((path === '/login' || path === '/register') && userSession) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // Allow all other traffic
   return NextResponse.next();
 }
 
-// Configuration: Tell Next.js to run this middleware ONLY on admin routes
+// -------------------------------------------------------------
+// CONFIGURATION
+// -------------------------------------------------------------
 export const config = {
-  matcher: ['/admin/:path*'],
+  // We updated the matcher to watch Admin routes AND Customer routes
+  // Excludes images, api, and next.js static files to keep it fast
+  matcher: [
+    '/admin/:path*', 
+    '/', 
+    '/profile/:path*', 
+    '/cart/:path*', 
+    '/shop/:path*',
+    '/login',
+    '/register'
+  ],
 };
