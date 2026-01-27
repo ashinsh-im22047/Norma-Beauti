@@ -43,6 +43,28 @@ export default function InventoryManagement() {
     }
   };
 
+  // --- LOGOUT FUNCTION (UPDATED) ---
+  const handleLogout = async () => {
+    try {
+      // 1. Ask the server to delete the cookies (Wait for this to finish!)
+      await fetch('/api/logout', { method: 'POST' });
+      
+      // 2. Clear Local Storage
+      localStorage.clear();
+      
+      // 3. Alert and Force Refresh to Login
+      alert("Logged out successfully");
+      window.location.href = '/login'; 
+
+    } catch (error) {
+      console.error("Logout failed", error);
+      // Fallback if API fails
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+  };
+  // --------------------------------
+
   const getIcon = (name: string) => {
     const lower = name.toLowerCase();
     if (lower.includes('individual')) return '💄';
@@ -127,7 +149,11 @@ export default function InventoryManagement() {
            <h1 className="text-xl font-bold tracking-wider">ADMIN PANEL</h1>
         </div>
         <div className="flex items-center gap-4">
-            <button className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-5 rounded-full transition">
+            {/* UPDATED LOGOUT BUTTON */}
+            <button 
+                onClick={handleLogout}
+                className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-5 rounded-full transition"
+            >
             LOGOUT
             </button>
         </div>

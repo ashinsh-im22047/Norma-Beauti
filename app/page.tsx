@@ -6,9 +6,9 @@ import CustomerHeader from '@/components/CustomerHeader';
 
 // Define Category Options
 const CATEGORIES = [
-  { id: 'cat_individual', name: 'Individual' },
-  { id: 'cat_ready_box', name: 'Ready Made Boxes' },
-  { id: 'cat_custom_box', name: 'Customizable Boxes'}, 
+  { id: 'cat_individual', name: 'Individual Product' },
+  { id: 'cat_ready_box', name: 'Ready Made Gift Boxes' },
+  { id: 'cat_custom_box', name: 'Customizable Gift Box'}, 
 ];
 
 export default function CustomerHomePage() {
@@ -113,26 +113,34 @@ export default function CustomerHomePage() {
       {/* STICKY SEARCH BAR */}
       <div className="sticky top-20 z-40 bg-[#483D58]/80 backdrop-blur-md shadow-xl border-y border-white/10 py-4 transition-all duration-300">
          <div className="container mx-auto px-4">
-             <div className="flex flex-col md:flex-row gap-3 items-center justify-center max-w-5xl mx-auto">
-                 <div className="w-full md:w-96 relative">
+             {/* CHANGE 1: Increased max-w-5xl to max-w-7xl to give more space 
+                CHANGE 2: Added flex-wrap to handle very small laptop screens gracefully without cutting text
+             */}
+             <div className="flex flex-col lg:flex-row gap-4 items-center justify-center max-w-7xl mx-auto">
+                 
+                 {/* CHANGE 3: Reduced search width (md:w-96 -> md:w-72) to save space for buttons */}
+                 <div className="w-full md:w-72 relative flex-shrink-0">
                     <span className="absolute left-4 top-2.5 text-[#483D58]/70">🔍</span>
                     <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-sm placeholder-[#483D58]/50 focus:outline-none focus:ring-2 focus:ring-[#E0B0D8] shadow-inner"/>
                  </div>
-                 <div className="flex gap-2 w-full md:w-auto">
-                    <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-1/2 md:w-auto px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
+                 
+                 <div className="flex gap-2 w-full md:w-auto flex-shrink-0 justify-center">
+                    <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
                         <option value="all">All Prices</option><option value="under-1000">{'< 1000'}</option><option value="under-5000">{'< 5000'}</option>
                     </select>
-                    <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="w-1/2 md:w-auto px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
+                    <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="px-4 py-2 rounded-full bg-white/90 text-[#483D58] font-bold text-xs cursor-pointer focus:outline-none hover:bg-white transition text-center shadow-sm">
                         <option value="newest">Newest</option><option value="price-low">Price Low-High</option><option value="price-high">Price High-Low</option>
                     </select>
                  </div>
                  
-                 {/* ✅ CATEGORIES: Added classes to hide scrollbar */}
-                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                 {/* CHANGE 4: Removed overflow-x-auto (no scrollbar).
+                    CHANGE 5: Added flex-shrink-0 to prevent buttons from being squished/cut.
+                 */}
+                 <div className="flex gap-2 w-full md:w-auto justify-center flex-shrink-0">
                     {CATEGORIES.map((cat) => (
                       <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                        className={`px-3 py-2 rounded-full font-bold text-[10px] md:text-xs flex items-center gap-1 transition-all whitespace-nowrap border
+                        className={`px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1 transition-all whitespace-nowrap border
                           ${activeCategory === cat.id ? 'bg-[#E0B0D8] text-[#134B5F] border-[#E0B0D8] shadow-md' : 'bg-white/10 text-white border-white/30 hover:bg-white/20'}`}>
                         {cat.name}
                       </button>

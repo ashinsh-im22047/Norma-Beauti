@@ -23,9 +23,18 @@ export default function AdminDashboard() {
     }
   }, [router]);
 
+  // --- LOGOUT FUNCTION (COPY THIS TO DASHBOARD) ---
   const handleLogout = () => {
+    // 1. Clear Local Storage
     localStorage.clear();
-    router.push('/login');
+
+    // 2. Clear Cookies (Client Side)
+    document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    
+    // 3. Force Refresh to Login Page WITH the logout parameter
+    // This allows you to bypass the Middleware check
+    window.location.href = '/login?logout=true'; 
   };
 
   // Dashboard Menu Items
