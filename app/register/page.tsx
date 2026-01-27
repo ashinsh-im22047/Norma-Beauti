@@ -2,16 +2,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // New State
+  const [confirmPassword, setConfirmPassword] = useState(''); 
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async () => {
-    // 1. Validation: Check if passwords match
     if (password !== confirmPassword) {
       alert("Passwords do not match!");
       return;
@@ -19,7 +19,6 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // 2. Send only email and password to backend
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,84 +42,88 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+    // MAIN BACKGROUND: Elegant Pink-Purple Gradient
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans">
       
-      {/* Background Layer */}
-      <div className="absolute inset-0 z-0">
-        <Image 
-          src="/backgroundimage.jpg" 
-          alt="Background" 
-          fill 
-          className="object-cover blur-sm opacity-90" 
-        />
-        <div className="absolute inset-0 bg-black/30" />
-      </div>
+      {/* Decorative Background Glows */}
+      <div className="absolute top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#9B5DE5]/20 rounded-full blur-[120px] pointer-events-none"></div>
 
-      {/* Main Card */}
-      <div className="relative z-10 bg-[#d4b0c7]/90 backdrop-blur-md p-10 rounded-[3rem] shadow-2xl w-full max-w-md flex flex-col items-center gap-6 border border-white/40">
-        
-        {/* Logo Section */}
-        <div className="w-20 h-20 bg-[#1a4a5a] rounded-full flex items-center justify-center shadow-lg border-2 border-white mb-2 overflow-hidden">
-             <Image src="/logo.jpeg" alt="Logo" width={80} height={80} className="object-cover" />
-        </div>
-
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-[#1a4a5a]" style={{ fontFamily: 'serif' }}>
-            Create your account
-          </h1>
-          <p className="text-sm text-[#1a4a5a] mt-2 font-medium">
-            or <span onClick={() => router.push('/login')} className="underline cursor-pointer hover:text-white transition">log in to your existing account</span>
-          </p>
-        </div>
-
-        <div className="w-full flex flex-col gap-4">
-          {/* Email Input */}
-          <input 
-            type="email" 
-            placeholder="email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-[#f3e6ef] text-gray-800 placeholder-gray-500 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1a4a5a] shadow-inner"
-          />
-          
-          {/* Password Input */}
-          <input 
-            type="password" 
-            placeholder="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-[#f3e6ef] text-gray-800 placeholder-gray-500 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1a4a5a] shadow-inner"
-          />
-
-          {/* Confirm Password Input (Replaced Username) */}
-          <input 
-            type="password" 
-            placeholder="confirm password" 
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full bg-[#f3e6ef] text-gray-800 placeholder-gray-500 px-6 py-3 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1a4a5a] shadow-inner"
-          />
-        </div>
-
-        <button 
-          onClick={handleRegister}
-          disabled={loading}
-          className="bg-[#1a4a5a] text-white font-bold py-3 px-12 rounded-full shadow-lg hover:bg-[#133842] hover:scale-105 transition-all mt-2"
-        >
-          {loading ? 'Creating...' : 'Sign up'}
-        </button>
-
-      </div>
-
-      <div className="absolute bottom-8 left-8 z-20">
+      {/* Back Button */}
+      <div className="absolute top-6 left-6 z-50">
         <button 
           onClick={() => router.back()} 
-          className="bg-[#8c8c9e]/80 hover:bg-[#7a7a8a] text-white font-bold py-2 px-8 rounded-full shadow-md backdrop-blur-sm transition flex items-center gap-2"
+          className="flex items-center gap-2 px-6 py-2 bg-white/40 backdrop-blur-md border border-white/60 rounded-full text-[#4A1D46] font-bold text-sm hover:bg-white/70 shadow-lg transition"
         >
-          <span className="text-xl">{'<'}</span> Back
+          <span>←</span> Back
         </button>
       </div>
 
+      {/* Main Split Card (Glassmorphism) */}
+      <div className="relative z-10 w-full max-w-4xl h-[600px] flex rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/40 backdrop-blur-xl bg-white/30">
+        
+        {/* LEFT SIDE: Dark Gradient */}
+        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-[#4A1D46]/90 to-[#2E1029]/90 flex-col items-center justify-center p-10 text-center relative backdrop-blur-md">
+            <div className="w-36 h-36 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(216,131,183,0.3)] border border-white/20 relative z-20 overflow-hidden">
+                 <Image src="/logo.jpeg" alt="Logo" width={140} height={140} className="object-cover opacity-90" />
+            </div>
+            <h2 className="text-3xl font-serif font-bold text-white tracking-widest leading-snug uppercase drop-shadow-md">
+              Join<br />Norma Beauti
+            </h2>
+            <p className="text-[#D883B7] mt-3 text-sm tracking-wide font-medium italic">
+              Begin your journey to elegance.
+            </p>
+        </div>
+
+        {/* RIGHT SIDE: Light Glass Form */}
+        <div className="w-full md:w-1/2 bg-white/60 backdrop-blur-2xl flex flex-col items-center justify-center p-12 relative">
+            <h2 className="text-3xl font-serif font-bold text-[#4A1D46] mb-6 text-center">Create Account</h2>
+
+            <div className="w-full flex flex-col gap-4">
+              <div className="relative">
+                  <input 
+                    type="email" 
+                    placeholder="Email Address" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"
+                  />
+              </div>
+              <div className="relative">
+                  <input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"
+                  />
+              </div>
+              <div className="relative">
+                  <input 
+                    type="password" 
+                    placeholder="Confirm Password" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"
+                  />
+              </div>
+
+              <button 
+                onClick={handleRegister}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] hover:opacity-90 text-white font-bold py-4 rounded-2xl shadow-lg transition-all mt-4 text-md tracking-wider border border-white/20"
+              >
+                {loading ? 'Creating...' : 'Sign Up'}
+              </button>
+
+              <div className="text-center mt-4">
+                 <p className="text-[#4A1D46] text-xs">
+                   Already have an account? <Link href="/login" className="font-bold text-[#D883B7] hover:underline hover:text-[#9B5DE5] transition">Log in</Link>
+                 </p>
+              </div>
+            </div>
+        </div>
+      </div>
     </div>
   );
 }

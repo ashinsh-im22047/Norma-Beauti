@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Image from 'next/image';
 
 type Category = {
   categoryid: string;
@@ -23,8 +24,6 @@ export default function InventoryManagement() {
 
   useEffect(() => {
     fetchCategories();
-    
-    // Close menu when clicking anywhere else
     const closeMenu = () => setActiveMenuId(null);
     window.addEventListener('click', closeMenu);
     return () => window.removeEventListener('click', closeMenu);
@@ -43,27 +42,18 @@ export default function InventoryManagement() {
     }
   };
 
-  // --- LOGOUT FUNCTION (UPDATED) ---
   const handleLogout = async () => {
     try {
-      // 1. Ask the server to delete the cookies (Wait for this to finish!)
       await fetch('/api/logout', { method: 'POST' });
-      
-      // 2. Clear Local Storage
       localStorage.clear();
-      
-      // 3. Alert and Force Refresh to Login
       alert("Logged out successfully");
-     window.location.href = '/';
-
+      window.location.href = '/';
     } catch (error) {
       console.error("Logout failed", error);
-      // Fallback if API fails
       localStorage.clear();
       window.location.href = '/login';
     }
   };
-  // --------------------------------
 
   const getIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -82,12 +72,9 @@ export default function InventoryManagement() {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault(); 
     e.stopPropagation(); 
-    
     if (!confirm("Are you sure you want to delete this category?")) return;
-
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-      
       if (res.ok) {
         setActiveMenuId(null);   
         await fetchCategories(); 
@@ -140,113 +127,135 @@ export default function InventoryManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3E6EF] font-sans">
+    // MAIN BACKGROUND: Elegant Pink-Purple Gradient
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#2E1029]">
       
-      {/* HEADER */}
-      <header className="bg-[#134B5F] text-white py-4 px-8 flex justify-between items-center shadow-lg">
+      {/* Decorative Background Glows */}
+      <div className="fixed top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="fixed bottom-0 right-0 w-96 h-96 bg-[#9B5DE5]/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+      {/* ADMIN HEADER (Same as Dashboard) */}
+      <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white px-8 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50 border-b border-[#D883B7]/30">
         <div className="flex items-center gap-3">
-           <button onClick={() => router.back()} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
-           <h1 className="text-xl font-bold tracking-wider">ADMIN PANEL</h1>
+            <button onClick={() => router.back()} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
+            <div className="w-10 h-10 rounded-full bg-white/90 overflow-hidden border-2 border-[#D883B7] shadow-md">
+                <img src="/logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+            </div>
+            <span className="font-serif font-bold text-lg tracking-wide text-[#F3E5F5] hidden md:block">NORMA BEAUTI</span>
         </div>
-        <div className="flex items-center gap-4">
-            {/* UPDATED LOGOUT BUTTON */}
-            <button 
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-5 rounded-full transition"
-            >
+        <button 
+            onClick={handleLogout} 
+            className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-6 py-2 rounded-full font-bold text-xs hover:opacity-90 transition shadow-md border border-white/20 tracking-wider"
+        >
             LOGOUT
-            </button>
-        </div>
+        </button>
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="container mx-auto px-6 py-10">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          <div>
-            <h2 className="text-3xl font-serif text-gray-900">Inventory Management</h2>
-            <p className="text-gray-600 text-sm mt-1">Manage your products, ready-made & custom boxes.</p>
-          </div>
-          <button onClick={openAddModal} className="bg-[#403b58] hover:bg-[#2e2a40] text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition transform hover:scale-105">
-            <span className="text-xl font-bold">+</span> Add New Category
-          </button>
+      <main className="container mx-auto px-6 py-10 relative z-10 max-w-7xl">
+        
+        {/* CONTROLS CARD (Dark Glass) */}
+        <div className="bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-2xl border border-white/20 mb-12 text-white">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                   <h2 className="text-3xl font-serif text-white tracking-wide">Inventory Management</h2>
+                   <p className="text-sm text-[#D883B7] mt-1 font-medium">Manage your products, ready-made & custom boxes.</p>
+                </div>
+                <button 
+                    onClick={openAddModal} 
+                    className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-8 py-3 rounded-xl shadow-lg font-bold hover:opacity-90 hover:scale-105 transition-all flex items-center gap-2 border border-white/20"
+                >
+                    <span className="text-xl leading-none">+</span> Add New Category
+                </button>
+            </div>
         </div>
 
         {/* CARDS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {isLoading ? <p>Loading...</p> : categories.map((cat) => (
-            
-            <div key={cat.categoryid} className="relative group block">
-              
-              {/* --- 3-DOT MENU --- */}
-              <div className="absolute top-4 right-4 z-40">
-                <button 
-                  onClick={(e) => toggleMenu(e, cat.categoryid)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition font-bold text-gray-800 text-xl bg-white/50 backdrop-blur-sm"
-                >
-                  ⋮
-                </button>
-
-                {activeMenuId === cat.categoryid && (
-                  <div className="absolute right-0 top-8 bg-white rounded-lg shadow-xl py-2 w-32 border border-gray-200 z-50">
+          {isLoading ? (
+              <div className="col-span-full flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9B5DE5]"></div></div>
+          ) : (
+              categories.map((cat) => (
+                <div key={cat.categoryid} className="relative group block">
+                  
+                  {/* --- 3-DOT MENU --- */}
+                  <div className="absolute top-5 right-5 z-40">
                     <button 
-                      onClick={(e) => openEditModal(e, cat)}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"
+                      onClick={(e) => toggleMenu(e, cat.categoryid)}
+                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 transition font-bold text-white text-2xl bg-white/10 backdrop-blur-md"
                     >
-                      ✏️ Edit
+                      ⋮
                     </button>
-                    <button 
-                      onClick={(e) => handleDelete(e, cat.categoryid)}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-600 flex items-center gap-2"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                )}
-              </div>
 
-              {/* --- CLICKABLE CARD -> NAVIGATES TO PRODUCT PAGE --- */}
-              <Link href={`/admin/inventory/products?category=${cat.categoryid}`}>
-                <div className="bg-[#94A3B8] h-60 rounded-2xl p-6 flex flex-col justify-center items-center text-center shadow-md transition transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
-                  <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 shadow-sm">
-                    {getIcon(cat.categoryname)}
+                    {activeMenuId === cat.categoryid && (
+                      <div className="absolute right-0 top-10 bg-[#2E1029] backdrop-blur-xl rounded-xl shadow-xl py-2 w-32 border border-white/20 z-50">
+                        <button 
+                          onClick={(e) => openEditModal(e, cat)}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          onClick={(e) => handleDelete(e, cat.categoryid)}
+                          className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 flex items-center gap-2"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">{cat.categoryname}</h3>
-                  <p className="text-gray-700 text-sm mt-2">{cat.categorydescription}</p>
+
+                  {/* --- CLICKABLE CARD (Larger & Dark Glass Style) --- */}
+                  <Link href={`/admin/inventory/products?category=${cat.categoryid}`}>
+                    <div className="bg-[#5D2E46]/90 backdrop-blur-md h-72 rounded-[2.5rem] p-8 flex flex-col justify-center items-center text-center shadow-lg border border-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:bg-[#5D2E46] cursor-pointer group-hover:border-[#D883B7]/50">
+                      
+                      {/* Icon Circle (Gradient) */}
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] flex items-center justify-center text-5xl mb-6 shadow-md group-hover:scale-110 transition-transform text-white border border-white/20">
+                        {getIcon(cat.categoryname)}
+                      </div>
+                      
+                      <h3 className="text-2xl font-bold text-white tracking-wide">{cat.categoryname}</h3>
+                      <p className="text-[#D883B7] text-sm mt-2 opacity-80 group-hover:opacity-100">{cat.categorydescription}</p>
+                    </div>
+                  </Link>
+
                 </div>
-              </Link>
-
-            </div>
-          ))}
+              ))
+          )}
         </div>
       </main>
 
-      {/* MODAL */}
+      {/* MODAL (Elegant Glassmorphism) */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={(e) => e.stopPropagation()}>
-          <div className="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl relative">
-            <h3 className="text-2xl font-bold mb-6 text-gray-800">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#2E1029]/95 backdrop-blur-xl w-full max-w-md rounded-[2rem] p-10 shadow-2xl relative border border-white/30 text-white">
+            <h3 className="text-2xl font-serif font-bold mb-8 text-center tracking-wide text-white">
               {isEditing ? 'Edit Category' : 'Add New Category'}
             </h3>
             
-            <div className="flex flex-col gap-4">
-              <label className="text-sm font-bold text-gray-700">Category Name</label>
-              <input 
-                value={currentCat.name}
-                onChange={(e) => setCurrentCat({...currentCat, name: e.target.value})}
-                className="bg-gray-100 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#134B5F]"
-              />
-              <label className="text-sm font-bold text-gray-700">Description</label>
-              <textarea 
-                value={currentCat.description}
-                onChange={(e) => setCurrentCat({...currentCat, description: e.target.value})}
-                className="bg-gray-100 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#134B5F]"
-                rows={3}
-              />
+            <div className="flex flex-col gap-6">
+              <div>
+                  <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Category Name</label>
+                  <input 
+                    value={currentCat.name}
+                    onChange={(e) => setCurrentCat({...currentCat, name: e.target.value})}
+                    className="w-full bg-white/10 border border-white/20 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-white placeholder-white/30 transition"
+                  />
+              </div>
+              <div>
+                  <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Description</label>
+                  <textarea 
+                    value={currentCat.description}
+                    onChange={(e) => setCurrentCat({...currentCat, description: e.target.value})}
+                    className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-white placeholder-white/30 transition"
+                    rows={3}
+                  />
+              </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowModal(false)} className="px-5 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
-              <button onClick={handleSave} className="bg-[#134B5F] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0f3a4a]">Save</button>
+            <div className="flex justify-end gap-4 mt-10">
+              <button onClick={() => setShowModal(false)} className="px-6 py-2 text-[#D883B7] font-bold hover:text-white transition">Cancel</button>
+              <button onClick={handleSave} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-8 py-3 rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all border border-white/20">Save</button>
             </div>
           </div>
         </div>

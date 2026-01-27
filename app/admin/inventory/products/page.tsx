@@ -24,7 +24,7 @@ function ProductListContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null); // For 3-dot menu
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -33,7 +33,7 @@ function ProductListContent() {
   const [formData, setFormData] = useState({ name: '', price: '', quantity: '', description: '', image: '' });
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
-  // --- NEW: Loading State for Save Button ---
+  // Loading State for Save Button
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => { 
@@ -53,9 +53,8 @@ function ProductListContent() {
     finally { setIsLoading(false); }
   };
 
-  // --- APPROVAL WORKFLOW (For Custom Box Page) ---
   const handleApproval = async (e: React.MouseEvent, id: string, newStatus: 'approved' | 'rejected') => {
-    e.stopPropagation(); // Prevent menu close issues
+    e.stopPropagation(); 
     try {
         const res = await fetch(`/api/inventory-items/${id}`, {
             method: 'PATCH',
@@ -66,12 +65,10 @@ function ProductListContent() {
     } catch (error) { alert("Action failed"); }
   };
 
-  // --- FILTERING ---
   const getLists = () => {
     let all = [...items];
     if (searchTerm) all = all.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // Sort Logic
     if (sortOption === 'price-low') all.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     if (sortOption === 'price-high') all.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
     if (sortOption === 'qty') all.sort((a, b) => a.quantity - b.quantity);
@@ -88,24 +85,19 @@ function ProductListContent() {
   
   const { pending, approved, standard } = getLists();
 
-  // --- ACTIONS (UPDATED WITH VALIDATION & LOADING) ---
   const handleSave = async () => {
-     // 1. Validation
-     if (!formData.name) return alert("Please fill in the Name field.");
-     if (!formData.price) return alert("Please fill in the Price field.");
-     if (!formData.quantity) return alert("Please fill in the Quantity field.");
-     
-     // --- NEW: Negative Value Validation ---
-     if (parseFloat(formData.price) < 0) return alert("Price cannot be negative.");
-     if (parseInt(formData.quantity) < 0) return alert("Quantity cannot be negative.");
+      if (!formData.name) return alert("Please fill in the Name field.");
+      if (!formData.price) return alert("Please fill in the Price field.");
+      if (!formData.quantity) return alert("Please fill in the Quantity field.");
+      
+      if (parseFloat(formData.price) < 0) return alert("Price cannot be negative.");
+      if (parseInt(formData.quantity) < 0) return alert("Quantity cannot be negative.");
 
-     // Description is optional now, so we don't check it
-     if (!formData.image && !fileToUpload) return alert("Please provide an image.");
+      if (!formData.image && !fileToUpload) return alert("Please provide an image.");
 
-     // 2. Start Loading
-     setIsSubmitting(true);
+      setIsSubmitting(true);
 
-     try {
+      try {
         let finalImageUrl = formData.image;
         if (fileToUpload) {
             const uploadData = new FormData();
@@ -130,7 +122,6 @@ function ProductListContent() {
         }
         
         if (res.ok) { 
-            // 3. Success Feedback
             alert(isEditing ? "Updated Successfully!" : "Added Successfully!");
             resetForm(); 
             fetchData(); 
@@ -140,7 +131,6 @@ function ProductListContent() {
     } catch(err) { 
         alert("Error saving product."); 
     } finally {
-        // 4. Stop Loading
         setIsSubmitting(false);
     }
   };
@@ -160,13 +150,17 @@ function ProductListContent() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- REUSABLE CARD COMPONENT (Unified Design) ---
+  // --- REUSABLE CARD (UPDATED: Dark Glass Style) ---
   const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => (
-    <div key={item.id} className={`bg-white p-4 rounded-xl shadow-sm border ${isPending ? 'border-yellow-200 bg-yellow-50' : 'border-gray-100'} flex items-center justify-between relative`}>
+    <div key={item.id} className={`
+        bg-[#5D2E46]/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/10 
+        flex items-center justify-between relative hover:shadow-2xl hover:scale-[1.01] transition-all duration-300
+        ${isPending ? 'border-yellow-400/50 bg-[#5D2E46]/95' : ''}
+    `}>
         
         {/* LEFT: Image & Text */}
-        <div className="flex items-center gap-4 flex-1 overflow-hidden">
-            <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-5 flex-1 overflow-hidden">
+            <div className="h-16 w-16 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/20 overflow-hidden shadow-inner">
                {item.image && item.image.startsWith('http') ? (
                  <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                ) : (
@@ -174,38 +168,38 @@ function ProductListContent() {
                )}
             </div>
             <div className="flex flex-col min-w-0">
-               <h3 className="font-bold text-gray-800 truncate text-lg">{item.name}</h3>
-               <p className="text-xs text-gray-500 truncate max-w-md">{item.desc || "No description"}</p>
+               {/* Updated text color to White/Light Gray for contrast */}
+               <h3 className="font-bold text-white truncate text-lg tracking-wide">{item.name}</h3>
+               <p className="text-xs text-gray-300 truncate max-w-md opacity-80">{item.desc || "No description"}</p>
             </div>
         </div>
 
         {/* RIGHT: Price & Menu */}
         <div className="flex items-center gap-8 shrink-0 ml-4">
             <div className="text-right hidden sm:block">
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Price</p>
-                {/* --- UPDATED: Currency to LKR --- */}
-                <p className="font-bold text-gray-800">LKR {item.price}</p>
+                <p className="text-[10px] text-[#D883B7] font-bold uppercase tracking-wider opacity-90">Price</p>
+                <p className="font-bold text-white text-lg">LKR {item.price}</p>
             </div>
             <div className="text-right hidden sm:block w-16">
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Stock</p>
-                <span className={`font-bold ${item.quantity < 5 ? 'text-red-500' : 'text-green-600'}`}>
+                <p className="text-[10px] text-[#D883B7] font-bold uppercase tracking-wider opacity-90">Stock</p>
+                <span className={`font-bold text-lg ${item.quantity < 5 ? 'text-red-300' : 'text-green-300'}`}>
                     {item.quantity}
                 </span>
             </div>
 
-            {/* PENDING ACTIONS (Buttons) OR APPROVED ACTIONS (Menu) */}
+            {/* ACTIONS */}
             {isPending ? (
                <div className="flex gap-2">
-                   <button onClick={(e) => handleApproval(e, item.id, 'approved')} className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-700">Add</button>
-                   <button onClick={(e) => handleApproval(e, item.id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-red-600">Remove</button>
+                   <button onClick={(e) => handleApproval(e, item.id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-green-600 shadow-md">Add</button>
+                   <button onClick={(e) => handleApproval(e, item.id, 'rejected')} className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-600 shadow-md">Remove</button>
                </div>
             ) : (
                <div className="relative">
-                  <button onClick={(e) => toggleMenu(e, item.id)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 text-xl font-bold">⋮</button>
+                  <button onClick={(e) => toggleMenu(e, item.id)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-white text-xl font-bold transition">⋮</button>
                   {activeMenuId === item.id && (
-                    <div className="absolute right-0 top-8 bg-white rounded-lg shadow-xl py-2 w-32 border border-gray-200 z-50">
-                      <button onClick={() => openEditModal(item)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 flex gap-2">✏️ Edit</button>
-                      <button onClick={() => handleDelete(item.id)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex gap-2">🗑️ Delete</button>
+                    <div className="absolute right-0 top-8 bg-[#2E1029] backdrop-blur-xl rounded-xl shadow-xl py-2 w-32 border border-white/20 z-50">
+                      <button onClick={() => openEditModal(item)} className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex gap-2">Edit</button>
+                      <button onClick={() => handleDelete(item.id)} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10 flex gap-2">Delete</button>
                     </div>
                   )}
                </div>
@@ -215,59 +209,64 @@ function ProductListContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F3E6EF] font-sans pb-20">
-      <header className="bg-[#134B5F] text-white py-4 px-8 flex justify-between items-center shadow-lg">
+    // MAIN BACKGROUND: Elegant Pink-Purple Gradient
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
+      
+      {/* HEADER: Darkest Elegant Gradient */}
+      <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white py-4 px-8 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <div className="flex items-center gap-3">
            <button onClick={() => router.back()} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
-           <h1 className="text-xl font-bold tracking-wider">{isCustomBox ? 'CUSTOM BOX SETUP' : 'PRODUCT MANAGEMENT'}</h1>
+           <h1 className="text-xl font-bold tracking-wider text-[#F3E5F5]">{isCustomBox ? 'CUSTOM BOX SETUP' : 'ITEM MANAGEMENT'}</h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8 relative z-10 max-w-6xl">
         
-        {/* --- CONTROLS ROW --- */}
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 mb-8">
-            <div>
-               <h2 className="text-3xl font-serif text-gray-900">{pageTitle}</h2>
-               <p className="text-sm text-gray-600 mt-1">Manage stock and pricing.</p>
-            </div>
-
-            <div className="flex items-center gap-3 w-full md:w-auto">
-                {/* Search */}
-                <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
-                    <input 
-                      type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#134B5F] w-48 transition"
-                    />
+        {/* --- CONTROLS CARD (UPDATED: Dark Glass Card) --- */}
+        <div className="bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-2xl border border-white/20 mb-8 text-white">
+            <div className="flex flex-col md:flex-row justify-between items-end gap-6">
+                <div>
+                   <h2 className="text-3xl font-serif text-white tracking-wide">{pageTitle}</h2>
+                   <p className="text-sm text-[#D883B7] mt-1 font-medium">Manage stock and pricing.</p>
                 </div>
-                {/* Sort */}
-                <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="py-2 px-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#134B5F] text-sm bg-white cursor-pointer">
-                    <option value="newest">Newest First</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                    <option value="qty">Quantity: Low to High</option>
-                </select>
-                {/* Add Button */}
-                <button onClick={() => setShowModal(true)} className="bg-[#403b58] text-white px-5 py-2 rounded-lg shadow-lg font-bold hover:bg-[#2e2a40] transition flex items-center gap-2">
-                  <span className="text-xl leading-none">+</span> Add
-                </button>
+
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Search */}
+                    <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-[#4A1D46]">🔍</span>
+                        <input 
+                          type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 pr-4 py-2 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] w-48 shadow-inner placeholder-[#4A1D46]/50"
+                        />
+                    </div>
+                    {/* Sort */}
+                    <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="py-2 px-3 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-medium text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D883B7] shadow-sm">
+                        <option value="newest">Newest First</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="qty">Quantity: Low to High</option>
+                    </select>
+                    {/* Add Button */}
+                    <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-6 py-2 rounded-xl shadow-lg font-bold hover:opacity-90 hover:scale-105 transition-all flex items-center gap-2 border border-white/20">
+                      <span className="text-xl leading-none">+</span> Add
+                    </button>
+                </div>
             </div>
         </div>
 
         {/* --- LIST VIEW --- */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
             
             {/* SCENARIO A: CUSTOM BOX PAGE (Split View) */}
             {isCustomBox ? (
-                <div className="flex flex-col gap-8">
+                <div className="flex flex-col gap-10">
                     {/* 1. PENDING LIST */}
                     {pending.length > 0 && (
                         <div>
-                            <h3 className="text-[#134B5F] font-bold text-xl mb-3 flex items-center gap-2">
-                                ⏳ Pending Approval <span className="text-sm font-normal bg-yellow-200 px-2 rounded-full text-black">{pending.length}</span>
+                            <h3 className="text-[#4A1D46] font-bold text-xl mb-4 flex items-center gap-3 pl-2">
+                                ⏳ Pending Approval <span className="text-xs font-bold bg-[#ffd54f] px-2 py-0.5 rounded-full text-[#2E1029] border border-[#2E1029]/20">{pending.length}</span>
                             </h3>
-                            <div className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-4">
                                 {pending.map(item => <ProductCard key={item.id} item={item} isPending={true} />)}
                             </div>
                         </div>
@@ -275,16 +274,16 @@ function ProductListContent() {
 
                     {/* 2. APPROVED LIST */}
                     <div>
-                        <h3 className="text-[#134B5F] font-bold text-xl mb-3">✅ Available Products</h3>
-                        <div className="flex flex-col gap-3">
-                            {approved.length === 0 && <p className="text-gray-500 italic p-4 text-center">No approved products yet.</p>}
+                        <h3 className="text-[#4A1D46] font-bold text-xl mb-4 pl-2">✅ Available Products</h3>
+                        <div className="flex flex-col gap-4">
+                            {approved.length === 0 && <p className="text-[#7B2C62] italic p-6 text-center opacity-70 bg-white/40 rounded-xl">No approved products yet.</p>}
                             {approved.map(item => <ProductCard key={item.id} item={item} />)}
                         </div>
                     </div>
                 </div>
             ) : (
                 /* SCENARIO B: NORMAL PAGE (Standard List) */
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
                     {standard.map(item => <ProductCard key={item.id} item={item} />)}
                 </div>
             )}
@@ -292,41 +291,38 @@ function ProductListContent() {
         </div>
       </main>
 
-      {/* MODAL (Updated) */}
+      {/* MODAL (Elegant Glassmorphism) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={resetForm}>
-          <div className="bg-[#D9D9D9] w-full max-w-lg rounded-3xl p-8 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-black mb-6">Product Details</h2>
-            <div className="flex flex-col gap-4">
-               <div><label className="text-xs text-gray-700 ml-2">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
+          <div className="bg-[#2E1029]/90 backdrop-blur-xl w-full max-w-lg rounded-[2rem] p-8 shadow-2xl relative border border-white/30 text-white" onClick={e => e.stopPropagation()}>
+            <h2 className="text-2xl font-serif font-bold text-white mb-6 text-center tracking-wide">Product Details</h2>
+            <div className="flex flex-col gap-5">
+               <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white placeholder-white/30"/></div>
                <div className="flex gap-4">
                    <div className="w-1/2">
-                       <label className="text-xs text-gray-700 ml-2">Price</label>
-                       {/* --- UPDATED: Min 0 Validation --- */}
-                       <input type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/>
+                       <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Price</label>
+                       <input type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/>
                    </div>
                    <div className="w-1/2">
-                       <label className="text-xs text-gray-700 ml-2">Qty</label>
-                       {/* --- UPDATED: Min 0 Validation --- */}
-                       <input type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/>
+                       <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Qty</label>
+                       <input type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/>
                    </div>
                </div>
-               <div><label className="text-xs text-gray-700 ml-2">Description <span className="text-gray-400 font-light">(Optional)</span></label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
-               <div><label className="text-xs text-gray-700 ml-2">Image</label><label className="w-full h-24 bg-[#EAE0E4] rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-400 text-gray-500 text-sm cursor-pointer hover:bg-gray-200"><input type="file" onChange={handleFileChange} className="hidden" accept="image/*"/>{formData.image ? <span className="text-black font-bold truncate max-w-[80%]">{formData.image}</span> : <span>drag and drop</span>}</label></div>
+               <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Description <span className="text-white/50 font-normal normal-case">(Optional)</span></label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/></div>
+               <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Image</label><label className="w-full h-24 bg-white/10 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-[#D883B7]/50 text-gray-300 text-sm cursor-pointer hover:bg-white/20 transition"><input type="file" onChange={handleFileChange} className="hidden" accept="image/*"/>{formData.image ? <span className="text-[#D883B7] font-bold truncate max-w-[80%]">{formData.image}</span> : <span>Click to upload image</span>}</label></div>
                
-               {/* UPDATED SAVE BUTTON WITH LOADING STATE */}
                <div className="flex justify-center mt-6">
                  <button 
                    onClick={handleSave} 
-                   disabled={isSubmitting} // Disable when adding
-                   className={`bg-[#483D58] text-white px-12 py-2 rounded-full font-bold shadow-lg transition
-                     ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#352c42]'}`}
+                   disabled={isSubmitting} 
+                   className={`bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-12 py-3 rounded-full font-bold shadow-lg transition border border-white/20
+                     ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90 hover:scale-105'}`}
                  >
-                   {isSubmitting ? "Adding..." : (isEditing ? "Update" : "Add")}
+                   {isSubmitting ? "Adding..." : (isEditing ? "Update" : "Add Product")}
                  </button>
                </div>
 
-               <button onClick={resetForm} className="absolute top-4 right-4 text-gray-500 font-bold text-xl">&times;</button>
+               <button onClick={resetForm} className="absolute top-5 right-6 text-[#D883B7] font-bold text-2xl hover:text-red-400 transition">&times;</button>
             </div>
           </div>
         </div>

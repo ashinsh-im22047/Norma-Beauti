@@ -1,69 +1,119 @@
 'use client'
 import { useState } from 'react';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleSubmit = async () => {
-    if (!email) return alert("Please enter your email");
-    
+  const handleReset = async () => {
+    if (!email) {
+      alert("Please enter your email address.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch('/api/forgot-password', {
+      // 1. REAL API CALL (Restored functionality)
+      const response = await fetch('/api/forgot-password', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      if (res.ok) {
-        alert("If an account exists with this email, you will receive a reset link shortly.");
-      } else {
-        alert("Something went wrong. Please try again.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
       }
-    } catch (error) {
-      alert("Error sending request.");
+      
+      // 2. Success Feedback
+      alert('Password reset link has been sent to your email.');
+      router.push('/login');
+
+    } catch (error: any) {
+      alert(error.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-gray-100 font-sans">
-      <div className="absolute inset-0 z-0">
-        <Image src="/backgroundimage.jpg" alt="Background" fill className="object-cover blur-sm opacity-90" />
-        <div className="absolute inset-0 bg-white/10" />
+    // MAIN BACKGROUND: Elegant Pink-Purple Gradient
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans">
+      
+      {/* Decorative Background Glows */}
+      <div className="absolute top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#9B5DE5]/20 rounded-full blur-[120px] pointer-events-none"></div>
+
+      {/* --- BACK BUTTON --- */}
+      <div className="absolute top-6 left-6 z-50">
+        <button 
+          onClick={() => router.back()} 
+          className="flex items-center gap-2 px-6 py-2 bg-white/40 backdrop-blur-md border border-white/60 rounded-full text-[#4A1D46] font-bold text-sm hover:bg-white/70 shadow-lg transition"
+        >
+          <span>←</span> Back
+        </button>
       </div>
 
-      <div className="relative z-10 bg-white/90 backdrop-blur-md p-10 rounded-[2rem] shadow-2xl w-full max-w-md text-center border border-white/40">
-        <div className="w-16 h-16 bg-[#134B5F] rounded-full flex items-center justify-center shadow-lg border-2 border-white mx-auto mb-6 overflow-hidden">
-             <Image src="/logo.jpeg" alt="Logo" width={64} height={64} className="object-cover" />
-        </div>
+      {/* Main Split Card (Glassmorphism) */}
+      <div className="relative z-10 w-full max-w-4xl h-[500px] flex rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/40 backdrop-blur-xl bg-white/30">
         
-        <h2 className="text-2xl font-bold text-[#134B5F] mb-2">Forgot Password?</h2>
-        <p className="text-gray-600 mb-8 text-sm">Enter your email to receive a reset link.</p>
+        {/* LEFT SIDE: Dark Gradient */}
+        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-[#4A1D46]/90 to-[#2E1029]/90 flex-col items-center justify-center p-10 text-center relative backdrop-blur-md">
+            
+            {/* Icon Circle */}
+            <div className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(216,131,183,0.3)] border border-white/20">
+                 <span className="text-6xl">🔒</span>
+            </div>
+            
+            <h2 className="text-2xl font-serif font-bold text-white tracking-widest leading-snug uppercase drop-shadow-md">
+              Forgot<br />Password?
+            </h2>
+            <p className="text-[#D883B7] mt-3 text-xs tracking-wide font-medium italic">
+              Don't worry, we'll help you reset it.
+            </p>
+        </div>
 
-        <input 
-          type="email" 
-          placeholder="Enter your email" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-[#f3e6ef] text-gray-800 px-5 py-3 rounded-full mb-4 focus:outline-none focus:ring-2 focus:ring-[#134B5F]"
-        />
+        {/* RIGHT SIDE: Light Glass Form */}
+        <div className="w-full md:w-1/2 bg-white/60 backdrop-blur-2xl flex flex-col items-center justify-center p-12 relative">
+            <h2 className="text-3xl font-serif font-bold text-[#4A1D46] mb-2 text-center">Reset Password</h2>
+            <p className="text-xs text-[#7B2C62] mb-8 text-center px-4 opacity-80">
+              Enter the email address associated with your account.
+            </p>
 
-        <button 
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#134B5F] hover:bg-[#0f3c4c] text-white font-bold py-3 rounded-full transition shadow-lg"
-        >
-          {loading ? 'Sending...' : 'Send Reset Link'}
-        </button>
+            <div className="w-full flex flex-col gap-5">
+              
+              {/* Email Input */}
+              <div className="relative">
+                  <input 
+                    type="email" 
+                    placeholder="Enter your email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"
+                  />
+              </div>
 
-        <Link href="/login" className="block mt-6 text-sm text-gray-500 hover:text-[#134B5F] font-bold">
-          ← Back to Login
-        </Link>
+              {/* Reset Button */}
+              <button 
+                onClick={handleReset}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] hover:opacity-90 text-white font-bold py-4 rounded-2xl shadow-lg transition-all mt-2 text-md tracking-wider border border-white/20"
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+
+              <div className="text-center mt-4">
+                 <Link href="/login" className="text-xs font-bold text-[#4A1D46] hover:text-[#9B5DE5] transition flex items-center justify-center gap-1">
+                   <span>←</span> Back to Login
+                 </Link>
+              </div>
+            </div>
+        </div>
+
       </div>
     </div>
   );
