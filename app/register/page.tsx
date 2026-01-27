@@ -12,13 +12,32 @@ export default function Register() {
   const router = useRouter();
 
   const handleRegister = async () => {
+    // 1. Validation: Check if passwords match
     if (password !== confirmPassword) {
       alert("Passwords do not match!");
       return;
     }
 
+    // 2. Validate Password Length (At least 6 chars)
+    if (password.length < 6) {
+        return alert("Password must be at least 6 characters long.");
+    }
+
+    // 3. Validate Password Complexity (At least 2 types: Upper, Lower, Number)
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    // Count how many requirements are met
+    const complexityCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasNumber ? 1 : 0);
+
+    if (complexityCount < 2) {
+        return alert("Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number");
+    }
+
     setLoading(true);
     try {
+      // 4. Send only email and password to backend
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +111,7 @@ export default function Register() {
               <div className="relative">
                   <input 
                     type="password" 
-                    placeholder="Password" 
+                    placeholder="Password (min 6 chars)" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"

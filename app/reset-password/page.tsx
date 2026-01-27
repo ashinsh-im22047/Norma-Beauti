@@ -1,7 +1,6 @@
 'use client'
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 
 function ResetPasswordContent() {
@@ -14,7 +13,27 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false);
 
   const handleReset = async () => {
+    // 1. Check Matching
     if (password !== confirmPassword) return alert("Passwords do not match");
+    
+    // 2. Validate Password Length (At least 6 chars)
+    if (password.length < 6) {
+        return alert("Password must be at least 6 characters long.");
+    }
+
+    // 3. Validate Password Complexity (At least 2 types: Upper, Lower, Number)
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    // Count how many requirements are met
+    const complexityCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasNumber ? 1 : 0);
+
+    if (complexityCount < 2) {
+        return alert("Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number");
+    }
+
+    // 4. Check Token
     if (!token) return alert("Invalid or missing token.");
 
     setLoading(true);
@@ -74,7 +93,7 @@ function ResetPasswordContent() {
               Secure<br />Account
             </h2>
             <p className="text-[#D883B7] mt-3 text-xs tracking-wide font-medium italic">
-              Create a strong password to protect your profile.
+              Use a mix of letters and numbers for safety.
             </p>
         </div>
 
@@ -88,7 +107,7 @@ function ResetPasswordContent() {
               <div className="relative">
                   <input 
                     type="password" 
-                    placeholder="New Password" 
+                    placeholder="New Password (min 6 chars)" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-white/50 text-[#2E1029] placeholder-[#7B2C62]/50 px-6 py-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm shadow-inner border border-white/50 transition-all"

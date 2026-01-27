@@ -10,7 +10,10 @@ export default function CreateProfile() {
 
   const [fullName, setFullName] = useState('');
   const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
+  
+  // State for the 9 digits entered by user
+  const [phoneDigits, setPhoneDigits] = useState(''); 
+  
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('Select');
   const [loading, setLoading] = useState(false);
@@ -21,13 +24,41 @@ export default function CreateProfile() {
     }
   }, [email, router]);
 
+  // Handle Phone Input (Allow only numbers, max 9)
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numbers
+    if (/^\d*$/.test(value)) {
+        // Limit to 9 digits
+        if (value.length <= 9) {
+            setPhoneDigits(value);
+        }
+    }
+  };
+
   const handleSubmit = async () => {
+    // 1. Phone Number Validation
+    if (phoneDigits.length !== 9) {
+        alert("Please enter a valid phone number (9 digits after +94).");
+        return;
+    }
+
+    // 2. Combine Prefix + Digits
+    const finalPhoneNumber = "+94" + phoneDigits;
+
     setLoading(true);
     try {
       const response = await fetch('/api/create-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, fullName, address, phoneNumber: phone, dob, gender }),
+        body: JSON.stringify({ 
+            email, 
+            fullName, 
+            address, 
+            phoneNumber: finalPhoneNumber, // Send the full +9477... format
+            dob, 
+            gender 
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to create profile');
@@ -36,7 +67,7 @@ export default function CreateProfile() {
       localStorage.setItem('userName', fullName);
 
       alert('Profile Setup Complete!');
-      router.push('/');
+      router.push('/shop');
 
     } catch (error) {
       alert('Error saving profile.');
@@ -49,10 +80,11 @@ export default function CreateProfile() {
     // MAIN BACKGROUND: Elegant Pink-Purple Gradient
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans">
       
+      {/* Decorative Background Glows */}
       <div className="absolute top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#9B5DE5]/20 rounded-full blur-[120px] pointer-events-none"></div>
 
-      {/* Main Split Card */}
+      {/* Main Split Card (Glassmorphism) */}
       <div className="relative z-10 w-full max-w-5xl h-[650px] flex rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/40 backdrop-blur-xl bg-white/30">
         
         {/* LEFT SIDE: Dark Gradient */}
@@ -86,10 +118,23 @@ export default function CreateProfile() {
                   className="w-full bg-white/50 text-[#2E1029] px-6 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm border border-white/50 transition-all"/>
               </div>
 
+              {/* PHONE INPUT SECTION */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-bold text-[#7B2C62] ml-3 uppercase">Phone</label>
-                <input type="tel" placeholder="e.g. 077 123 4567" value={phone} onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-white/50 text-[#2E1029] px-6 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm border border-white/50 transition-all"/>
+                <label className="text-xs font-bold text-[#7B2C62] ml-3 uppercase">Phone Number</label>
+                <div className="w-full bg-white/50 rounded-2xl flex items-center border border-white/50 overflow-hidden focus-within:ring-2 focus-within:ring-[#D883B7] transition-all">
+                    {/* Fixed Prefix */}
+                    <div className="bg-[#D883B7]/20 px-4 py-3 text-[#4A1D46] font-bold border-r border-white/30 select-none">
+                        +94
+                    </div>
+                    {/* Input for remaining 9 digits */}
+                    <input 
+                      type="text" 
+                      placeholder="77 123 4567" 
+                      value={phoneDigits} 
+                      onChange={handlePhoneChange}
+                      className="flex-1 bg-transparent text-[#2E1029] px-4 py-3 outline-none text-sm placeholder-[#7B2C62]/50"
+                    />
+                </div>
               </div>
 
               <div className="flex gap-4">
