@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Ensure Image is imported for the logo
+import Image from 'next/image'; 
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -10,13 +10,9 @@ export default function AdminDashboard() {
   const [adminName, setAdminName] = useState("Admin");
 
   useEffect(() => {
-    // 1. Check if user is actually logged in as ADMIN
     const role = localStorage.getItem('userRole');
     const name = localStorage.getItem('userName');
     
-    // Optional: Security check (uncomment if needed)
-    // if (role !== 'ADMIN') { router.push('/login'); }
-
     if (name) setAdminName(name);
     setLoading(false);
   }, [router]);
@@ -29,19 +25,17 @@ export default function AdminDashboard() {
   };
 
   const handleAddAdmin = () => {
-    // Logic to add new admin (e.g., redirect to a registration page or open modal)
     alert("Redirecting to Add New Admin page...");
-    // router.push('/register?role=admin'); // Example route
   };
 
-  // Dashboard Menu Items
+  // Navigation Items
   const menuItems = [
     { title: "Manage Inventory", desc: "Products, Ready-made & Custom Boxes.", icon: "📦", path: "/admin/inventory" },
     { title: "Manage Orders", desc: "View and process pending customer orders.", icon: "🚚", path: "/admin/orders", badge: "2 New" },
-    { title: "Manage Offers", desc: "Create discount codes, sale banners, and promos.", icon: "🏷️", path: "/admin/offers" },
+    { title: "Manage Offers", desc: "Create discount codes, sale banners, and promos.", icon: "🏷️", path: "/admin/manage-offers" },
     { title: "Notifications", desc: "Check system alerts and stock warnings.", icon: "🔔", path: "/admin/notifications", badge: "3" },
     { title: "Sales Reports", desc: "View monthly earnings and analytics.", icon: "📊", path: "/admin/reports" },
-    { title: "Customer List", desc: "View registered users and history.", icon: "👥", path: "/admin/customers" },
+    { title: "Customer List", desc: "View registered users and history.", icon: "👥", path: "/admin/registered-users" },
   ];
 
   if (loading) return (
@@ -54,10 +48,9 @@ export default function AdminDashboard() {
     // MAIN BACKGROUND: Elegant Pink-Purple Gradient
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#2E1029]">
       
-      {/* --- CUSTOM ADMIN HEADER (Logo, Name, Logout Only) --- */}
+      {/* --- CUSTOM ADMIN HEADER --- */}
       <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white px-8 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50 border-b border-[#D883B7]/30">
         
-        {/* Left: Logo & Business Name */}
         <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/90 overflow-hidden border-2 border-[#D883B7] shadow-md">
                 <img src="/logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
@@ -65,7 +58,6 @@ export default function AdminDashboard() {
             <span className="font-serif font-bold text-lg tracking-wide text-[#F3E5F5] hidden md:block">NORMA BEAUTI</span>
         </div>
 
-        {/* Right: Header Logout Button */}
         <button 
             onClick={handleLogout} 
             className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-6 py-2 rounded-full font-bold text-xs hover:opacity-90 transition shadow-md border border-white/20 tracking-wider"
@@ -83,7 +75,6 @@ export default function AdminDashboard() {
             {/* --- LEFT SIDEBAR: Admin Profile --- */}
             <div className="w-full md:w-1/4 flex flex-col items-center gap-6">
                 
-                {/* Admin Avatar */}
                 <div className="w-32 h-32 bg-white/40 backdrop-blur-md rounded-full flex items-center justify-center text-5xl shadow-xl border border-white/60 text-[#4A1D46]">
                     🛡️
                 </div>
@@ -94,8 +85,6 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="w-full flex flex-col gap-4 mt-4">
-                    
-                    {/* NEW: Add New Admin Button */}
                     <button 
                         onClick={handleAddAdmin}
                         className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all flex items-center justify-center gap-3 border border-white/30"
@@ -112,7 +101,7 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* --- RIGHT SIDE: Dashboard Grid (Glassmorphism) --- */}
+            {/* --- RIGHT SIDE: Dashboard Content --- */}
             <div className="w-full md:w-3/4">
                 <div className="bg-white/40 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 shadow-2xl border border-white/60">
                     
@@ -123,23 +112,44 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    {/* DASHBOARD GRID BUTTONS */}
+                    {/* --- STATS ROW (Inserted Here) --- */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        {/* Total Sales */}
+                        <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
+                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Total Sales</h3>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">LKR 6,000</p>
+                        </div>
+                        {/* Active Orders */}
+                        <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
+                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Active Orders</h3>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">45</p>
+                        </div>
+                        {/* Total Users */}
+                        <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
+                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Total Users</h3>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">1,203</p>
+                        </div>
+                        {/* Low Stock Items */}
+                        <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
+                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Low Stock Items</h3>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">8</p>
+                        </div>
+                    </div>
+
+                    {/* --- DASHBOARD GRID BUTTONS --- */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        
                         {menuItems.map((item, index) => (
                             <button 
                                 key={index}
                                 onClick={() => router.push(item.path)}
                                 className="group relative flex flex-col items-center justify-center gap-4 p-6 rounded-3xl bg-white/50 border border-white/60 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
                             >
-                                {/* Notification Badge */}
                                 {item.badge && (
                                     <div className="absolute top-4 right-4 bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md animate-pulse">
                                         {item.badge}
                                     </div>
                                 )}
 
-                                {/* Icon Circle */}
                                 <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] flex items-center justify-center text-3xl shadow-md group-hover:scale-110 transition-transform text-white">
                                     {item.icon}
                                 </div>
@@ -149,11 +159,9 @@ export default function AdminDashboard() {
                                     <p className="text-xs text-[#7B2C62] mt-1 opacity-80 group-hover:opacity-100">{item.desc}</p>
                                 </div>
 
-                                {/* Hover Glow Effect */}
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/0 to-[#D883B7]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             </button>
                         ))}
-
                     </div>
                 </div>
             </div>

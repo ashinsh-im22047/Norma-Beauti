@@ -135,7 +135,7 @@ export default function ProfilePage() {
                 </h2>
 
                 <div className="w-full flex flex-col gap-3 mt-2">
-                    {/* UPDATED: Added onClick to Navigate to Wishlist */}
+                    {/* LINKED: Wishlist Page */}
                     <button 
                         onClick={() => router.push('/wishlist')}
                         className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-3"
@@ -143,10 +143,19 @@ export default function ProfilePage() {
                          Wishlist
                     </button>
                     
-                    <button className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-3">
+                    {/* LINKED: My Orders Page */}
+                    <button 
+                        onClick={() => router.push('/my-orders')}
+                        className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-3"
+                    >
                          My Orders
                     </button>
-                    <button className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-3">
+                    
+                    {/* LINKED: Contact Owner Page */}
+                    <button 
+                        onClick={() => router.push('/contact-owner')}
+                        className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-3"
+                    >
                         Contact Owner
                     </button>
                 </div>

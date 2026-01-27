@@ -150,13 +150,15 @@ function ProductListContent() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- REUSABLE CARD (UPDATED: Dark Glass Style) ---
+  // --- REUSABLE CARD (FIXED: Dynamic z-index added) ---
   const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => (
     <div key={item.id} className={`
         bg-[#5D2E46]/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/10 
         flex items-center justify-between relative hover:shadow-2xl hover:scale-[1.01] transition-all duration-300
         ${isPending ? 'border-yellow-400/50 bg-[#5D2E46]/95' : ''}
+        ${activeMenuId === item.id ? 'z-50' : 'z-0'} 
     `}>
+        {/* ^^^ The line above fixes the overlapping issue ^^^ */}
         
         {/* LEFT: Image & Text */}
         <div className="flex items-center gap-5 flex-1 overflow-hidden">
