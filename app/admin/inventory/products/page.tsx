@@ -94,8 +94,12 @@ function ProductListContent() {
      if (!formData.name) return alert("Please fill in the Name field.");
      if (!formData.price) return alert("Please fill in the Price field.");
      if (!formData.quantity) return alert("Please fill in the Quantity field.");
+     
+     // --- NEW: Negative Value Validation ---
+     if (parseFloat(formData.price) < 0) return alert("Price cannot be negative.");
+     if (parseInt(formData.quantity) < 0) return alert("Quantity cannot be negative.");
+
      // Description is optional now, so we don't check it
-     // You might want to check for image if strictly required, but usually optional during editing
      if (!formData.image && !fileToUpload) return alert("Please provide an image.");
 
      // 2. Start Loading
@@ -179,7 +183,8 @@ function ProductListContent() {
         <div className="flex items-center gap-8 shrink-0 ml-4">
             <div className="text-right hidden sm:block">
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Price</p>
-                <p className="font-bold text-gray-800">${item.price}</p>
+                {/* --- UPDATED: Currency to LKR --- */}
+                <p className="font-bold text-gray-800">LKR {item.price}</p>
             </div>
             <div className="text-right hidden sm:block w-16">
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Stock</p>
@@ -294,7 +299,18 @@ function ProductListContent() {
             <h2 className="text-xl font-bold text-black mb-6">Product Details</h2>
             <div className="flex flex-col gap-4">
                <div><label className="text-xs text-gray-700 ml-2">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
-               <div className="flex gap-4"><div className="w-1/2"><label className="text-xs text-gray-700 ml-2">Price</label><input type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div><div className="w-1/2"><label className="text-xs text-gray-700 ml-2">Qty</label><input type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div></div>
+               <div className="flex gap-4">
+                   <div className="w-1/2">
+                       <label className="text-xs text-gray-700 ml-2">Price</label>
+                       {/* --- UPDATED: Min 0 Validation --- */}
+                       <input type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/>
+                   </div>
+                   <div className="w-1/2">
+                       <label className="text-xs text-gray-700 ml-2">Qty</label>
+                       {/* --- UPDATED: Min 0 Validation --- */}
+                       <input type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/>
+                   </div>
+               </div>
                <div><label className="text-xs text-gray-700 ml-2">Description <span className="text-gray-400 font-light">(Optional)</span></label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
                <div><label className="text-xs text-gray-700 ml-2">Image</label><label className="w-full h-24 bg-[#EAE0E4] rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-400 text-gray-500 text-sm cursor-pointer hover:bg-gray-200"><input type="file" onChange={handleFileChange} className="hidden" accept="image/*"/>{formData.image ? <span className="text-black font-bold truncate max-w-[80%]">{formData.image}</span> : <span>drag and drop</span>}</label></div>
                
