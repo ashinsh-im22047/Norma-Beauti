@@ -33,6 +33,9 @@ function ProductListContent() {
   const [formData, setFormData] = useState({ name: '', price: '', quantity: '', description: '', image: '' });
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
+  // --- NEW: Loading State for Save Button ---
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => { 
     if(categoryId) fetchData(); 
     const closeMenu = () => setActiveMenuId(null);
@@ -85,8 +88,19 @@ function ProductListContent() {
   
   const { pending, approved, standard } = getLists();
 
-  // --- ACTIONS ---
+  // --- ACTIONS (UPDATED WITH VALIDATION & LOADING) ---
   const handleSave = async () => {
+     // 1. Validation
+     if (!formData.name) return alert("Please fill in the Name field.");
+     if (!formData.price) return alert("Please fill in the Price field.");
+     if (!formData.quantity) return alert("Please fill in the Quantity field.");
+     // Description is optional now, so we don't check it
+     // You might want to check for image if strictly required, but usually optional during editing
+     if (!formData.image && !fileToUpload) return alert("Please provide an image.");
+
+     // 2. Start Loading
+     setIsSubmitting(true);
+
      try {
         let finalImageUrl = formData.image;
         if (fileToUpload) {
@@ -110,8 +124,21 @@ function ProductListContent() {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, categoryType: dbType, categoryId })
             });
         }
-        if (res.ok) { resetForm(); fetchData(); } 
-    } catch(err) { alert("Error"); }
+        
+        if (res.ok) { 
+            // 3. Success Feedback
+            alert(isEditing ? "Updated Successfully!" : "Added Successfully!");
+            resetForm(); 
+            fetchData(); 
+        } else {
+            throw new Error("Failed");
+        }
+    } catch(err) { 
+        alert("Error saving product."); 
+    } finally {
+        // 4. Stop Loading
+        setIsSubmitting(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -260,7 +287,7 @@ function ProductListContent() {
         </div>
       </main>
 
-      {/* MODAL (Same as before) */}
+      {/* MODAL (Updated) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={resetForm}>
           <div className="bg-[#D9D9D9] w-full max-w-lg rounded-3xl p-8 shadow-2xl relative" onClick={e => e.stopPropagation()}>
@@ -268,9 +295,21 @@ function ProductListContent() {
             <div className="flex flex-col gap-4">
                <div><label className="text-xs text-gray-700 ml-2">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
                <div className="flex gap-4"><div className="w-1/2"><label className="text-xs text-gray-700 ml-2">Price</label><input type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div><div className="w-1/2"><label className="text-xs text-gray-700 ml-2">Qty</label><input type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div></div>
-               <div><label className="text-xs text-gray-700 ml-2">Description</label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
+               <div><label className="text-xs text-gray-700 ml-2">Description <span className="text-gray-400 font-light">(Optional)</span></label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-[#EAE0E4] rounded-full px-4 py-2 outline-none"/></div>
                <div><label className="text-xs text-gray-700 ml-2">Image</label><label className="w-full h-24 bg-[#EAE0E4] rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-gray-400 text-gray-500 text-sm cursor-pointer hover:bg-gray-200"><input type="file" onChange={handleFileChange} className="hidden" accept="image/*"/>{formData.image ? <span className="text-black font-bold truncate max-w-[80%]">{formData.image}</span> : <span>drag and drop</span>}</label></div>
-               <div className="flex justify-center mt-6"><button onClick={handleSave} className="bg-[#483D58] text-white px-12 py-2 rounded-full font-bold hover:bg-[#352c42] shadow-lg">{isEditing ? "Update" : "Add"}</button></div>
+               
+               {/* UPDATED SAVE BUTTON WITH LOADING STATE */}
+               <div className="flex justify-center mt-6">
+                 <button 
+                   onClick={handleSave} 
+                   disabled={isSubmitting} // Disable when adding
+                   className={`bg-[#483D58] text-white px-12 py-2 rounded-full font-bold shadow-lg transition
+                     ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#352c42]'}`}
+                 >
+                   {isSubmitting ? "Adding..." : (isEditing ? "Update" : "Add")}
+                 </button>
+               </div>
+
                <button onClick={resetForm} className="absolute top-4 right-4 text-gray-500 font-bold text-xl">&times;</button>
             </div>
           </div>
