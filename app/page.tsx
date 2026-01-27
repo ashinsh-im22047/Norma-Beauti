@@ -49,7 +49,17 @@ export default function CustomerHomePage() {
     try {
         setSearchTerm(''); setFilterType('all');
         const res = await fetch(`/api/inventory-items?categoryId=${catId}`);
-        const data = await res.json();
+        let data = await res.json();
+
+        // --- FILTER FIX: Check multiple property names (customStatus OR custom_status) ---
+        if (catId === 'cat_custom_box') {
+           data = data.filter((item: any) => {
+             // We check both formats just in case the API returns camelCase
+             const status = item.customStatus || item.custom_status || item.status;
+             return status === 'approved';
+           });
+        }
+
         setProducts(data);
         setFilteredProducts(data);
     } catch (err) { console.error(err); }
@@ -83,8 +93,9 @@ export default function CustomerHomePage() {
             {isNew && <div className="absolute top-2 right-2 bg-[#134B5F] text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md">NEW</div>}
         </div>
         <div className="p-3 flex flex-col gap-1 flex-grow">
-            <h4 className="font-bold text-sm text-gray-800 truncate">{item.name}</h4>
-            <p className="text-[10px] text-gray-500 line-clamp-2 flex-grow">{item.desc}</p>
+            {/* Display Logic: Handles item.name OR item.productname */}
+            <h4 className="font-bold text-sm text-gray-800 truncate">{item.name || item.productname}</h4>
+            <p className="text-[10px] text-gray-500 line-clamp-2 flex-grow">{item.desc || item.description || item.productdescription}</p>
             <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                 <span className="text-base font-bold text-[#134B5F]">Rs {item.price}</span>
                 <button className="bg-[#483D58] text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-[#134B5F] transition shadow-md text-sm">+</button>
@@ -113,12 +124,8 @@ export default function CustomerHomePage() {
       {/* STICKY SEARCH BAR */}
       <div className="sticky top-20 z-40 bg-[#483D58]/80 backdrop-blur-md shadow-xl border-y border-white/10 py-4 transition-all duration-300">
          <div className="container mx-auto px-4">
-             {/* CHANGE 1: Increased max-w-5xl to max-w-7xl to give more space 
-                CHANGE 2: Added flex-wrap to handle very small laptop screens gracefully without cutting text
-             */}
              <div className="flex flex-col lg:flex-row gap-4 items-center justify-center max-w-7xl mx-auto">
                  
-                 {/* CHANGE 3: Reduced search width (md:w-96 -> md:w-72) to save space for buttons */}
                  <div className="w-full md:w-72 relative flex-shrink-0">
                     <span className="absolute left-4 top-2.5 text-[#483D58]/70">🔍</span>
                     <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
@@ -134,9 +141,6 @@ export default function CustomerHomePage() {
                     </select>
                  </div>
                  
-                 {/* CHANGE 4: Removed overflow-x-auto (no scrollbar).
-                    CHANGE 5: Added flex-shrink-0 to prevent buttons from being squished/cut.
-                 */}
                  <div className="flex gap-2 w-full md:w-auto justify-center flex-shrink-0">
                     {CATEGORIES.map((cat) => (
                       <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
@@ -170,12 +174,26 @@ export default function CustomerHomePage() {
 
         {/* BROWSE PRODUCTS */}
         <div className="bg-white/60 p-6 rounded-3xl shadow-sm border border-white/50 backdrop-blur-sm min-h-[400px]">
-            <div className="flex items-center gap-4 mb-6">
-                <h3 className="text-xl font-serif font-bold text-[#134B5F]">
-                    {searchTerm ? `Results` : CATEGORIES.find(c => c.id === activeCategory)?.name}
-                </h3>
-                <div className="h-0.5 flex-grow bg-[#134B5F]/20 rounded-full"></div>
+            
+            {/* --- UPDATED HEADER LOGIC --- */}
+            <div className="mb-6">
+                <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-serif font-bold text-[#134B5F]">
+                        {searchTerm ? `Results` : 
+                         activeCategory === 'cat_custom_box' ? 'Available Products' : 
+                         CATEGORIES.find(c => c.id === activeCategory)?.name}
+                    </h3>
+                    <div className="h-0.5 flex-grow bg-[#134B5F]/20 rounded-full"></div>
+                </div>
+                
+                {/* Description for Custom Box */}
+                {activeCategory === 'cat_custom_box' && !searchTerm && (
+                    <p className="text-sm text-gray-500 mt-1">
+                        Choose products and add them to your gift box.
+                    </p>
+                )}
             </div>
+            {/* --------------------------- */}
 
             {isLoadingProducts ? (
                 <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#134B5F]"></div></div>
