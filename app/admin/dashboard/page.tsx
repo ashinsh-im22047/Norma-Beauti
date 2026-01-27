@@ -32,11 +32,9 @@ export default function AdminDashboard() {
     document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     
-    // 3. Force Refresh to Login Page WITH the logout parameter
-    // This allows you to bypass the Middleware check
-    window.location.href = '/login?logout=true'; 
+    // 3. Redirect to MAIN LANDING PAGE
+    window.location.href = '/'; 
   };
-
   // Dashboard Menu Items
   const menuItems = [
     { 

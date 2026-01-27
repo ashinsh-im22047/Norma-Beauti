@@ -33,18 +33,16 @@ export default function Login() {
         if (data.user.role) localStorage.setItem('userRole', data.user.role);
       }
 
-      // ✅ NEW: Set the "Gatekeeper" Cookie
-      // This allows the Middleware to let you visit the Home Page
+      // ✅ Set the "Gatekeeper" Cookie for Middleware
       document.cookie = "user_session=true; path=/; max-age=86400"; 
 
       alert('Login Successful!');
 
-      // --- SMART REDIRECT FIXED ---
-      // Your database sends 'ADMIN', so we check for that.
+      // --- SMART REDIRECT ---
       if (data.user.role === 'ADMIN') {
         router.push('/admin/dashboard'); 
       } else {
-        router.push('/');
+        router.push('/shop'); // Redirect to Shop (Home Page) for customers
       }
 
     } catch (error: any) {
@@ -57,6 +55,13 @@ export default function Login() {
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-gray-900 font-sans">
       
+      {/* --- NEW: BACK BUTTON --- */}
+     <Link href="/" className="absolute top-6 left-6 z-50">
+        <button className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white font-bold text-sm hover:bg-white hover:text-[#134B5F] transition">
+          <span>←</span> Back
+        </button>
+      </Link>
+
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image 

@@ -54,7 +54,7 @@ export default function InventoryManagement() {
       
       // 3. Alert and Force Refresh to Login
       alert("Logged out successfully");
-      window.location.href = '/login'; 
+     window.location.href = '/';
 
     } catch (error) {
       console.error("Logout failed", error);

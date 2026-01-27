@@ -1,65 +1,92 @@
 "use client";
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function CustomerHeader() {
-  const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Highlight active link logic
-  const isActive = (path: string) => pathname === path ? "text-[#E0B0D8]" : "text-white hover:text-[#E0B0D8]";
+  useEffect(() => {
+    // Check if user is logged in
+    const session = document.cookie.includes('user_session'); 
+    setIsLoggedIn(session);
+  }, []);
+
+  const handleLogout = async () => {
+    document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    localStorage.clear();
+    window.location.href = '/'; 
+  };
+
+  // --- UPDATED POPUP LOGIC ---
+  const handleProtectedClick = (e: React.MouseEvent, path: string) => {
+    e.preventDefault(); 
+    if (isLoggedIn) {
+      router.push(path);
+    } else {
+      // Show Confirm Dialog (OK / Cancel)
+      const confirmed = window.confirm("Please login to access this feature.");
+      if (confirmed) {
+        // If OK clicked -> Go to Login
+        router.push('/login');
+      }
+      // If Cancel clicked -> Do nothing (Stay on page)
+    }
+  };
 
   return (
-    <header className="bg-[#134B5F] sticky top-0 z-50 shadow-xl h-20">
-      <div className="container mx-auto px-6 h-full flex justify-between items-center">
+    <header className="bg-[#134B5F] text-white px-8 py-4 flex justify-between items-center shadow-md sticky top-0 z-50">
+      
+      {/* LEFT: Logo */}
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-full bg-white overflow-hidden">
+           {/* Ensure this logo path is correct */}
+           <img src="/logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
+        </div>
+        <span className="font-serif font-bold text-lg tracking-wide hidden md:block">NORMA BEAUTI</span>
+      </div>
+
+      {/* RIGHT: Navigation & Auth Buttons grouped together */}
+      <div className="flex items-center gap-6">
         
-        {/* --- LEFT: LOGO & BUSINESS NAME --- */}
-        <Link href="/" className="flex items-center gap-4 group">
-            <div className="relative w-12 h-12 rounded-full border-2 border-white/20 overflow-hidden group-hover:border-[#E0B0D8] transition duration-300">
-               {/* Make sure logo.jpeg is in your public folder */}
-               <Image src="/logo.jpeg" alt="Norma Beauti Logo" fill className="object-cover" />
-            </div>
-            <span className="text-xl font-serif font-bold tracking-widest text-white group-hover:text-[#E0B0D8] transition">
-                NORMA BEAUTI
-            </span>
-        </Link>
-
-        {/* --- RIGHT: NAVIGATION & ACTIONS --- */}
-        <div className="flex items-center gap-8">
+        {/* Navigation Links */}
+        <nav className="hidden md:flex gap-6 text-sm font-bold tracking-wide items-center">
+            {/* 'HOME' links to the Shop page as requested */}
+            <Link href="/shop" className="hover:text-[#E0B0D8] transition">HOME</Link>
             
-            {/* 1. LINKS (Home, Cart, Profile) */}
-            <nav className="hidden md:flex items-center gap-8 text-sm font-bold tracking-wider transition-all">
-                <Link href="/" className={`${isActive('/')} transition duration-300`}>
-                    HOME
-                </Link>
-                <Link href="/cart" className={`${isActive('/cart')} transition duration-300 relative`}>
-                    CART
-                    {/* Optional: Tiny Red Dot if items exist */}
-                    {/* <span className="absolute -top-1 -right-2 w-2 h-2 bg-red-500 rounded-full"></span> */}
-                </Link>
-                <Link href="/profile" className={`${isActive('/profile')} transition duration-300`}>
-                    PROFILE
-                </Link>
-            </nav>
+            <button onClick={(e) => handleProtectedClick(e, '/cart')} className="hover:text-[#E0B0D8] transition uppercase">
+                CART
+            </button>
+            <button onClick={(e) => handleProtectedClick(e, '/profile')} className="hover:text-[#E0B0D8] transition uppercase">
+                PROFILE
+            </button>
+        </nav>
 
-            {/* Separator Line */}
-            <div className="hidden md:block w-px h-8 bg-white/20"></div>
+        {/* Divider Line */}
+        <div className="hidden md:block h-6 w-[1px] bg-white/30"></div>
 
-            {/* 2. BUTTONS (Login & Signup) */}
-            <div className="flex items-center gap-4">
-                {/* Login: Transparent Outline Style */}
-                <Link href="/login" className="px-6 py-2 rounded-full border border-white/40 text-white text-xs font-bold uppercase tracking-wide hover:bg-white/10 transition">
-                    Login
-                </Link>
-
-                {/* Sign Up: Solid Pink Style (Distinct) */}
-                <Link href="/register" className="px-6 py-2 rounded-full bg-[#E0B0D8] text-[#134B5F] text-xs font-bold uppercase tracking-wide shadow-md hover:bg-white hover:scale-105 transition transform">
-                    Sign Up
-                </Link>
-            </div>
-
+        {/* Auth Buttons */}
+        <div className="flex gap-3">
+          {isLoggedIn ? (
+            <button onClick={handleLogout} className="bg-[#E0B0D8] text-[#134B5F] px-5 py-2 rounded-full font-bold text-xs hover:bg-white transition">
+              LOGOUT
+            </button>
+          ) : (
+            <>
+              <Link href="/login">
+                 <button className="border border-[#E0B0D8] text-[#E0B0D8] px-5 py-2 rounded-full font-bold text-xs hover:bg-[#E0B0D8] hover:text-[#134B5F] transition">
+                   LOGIN
+                 </button>
+              </Link>
+              <Link href="/register">
+                 <button className="bg-[#E0B0D8] text-[#134B5F] px-5 py-2 rounded-full font-bold text-xs hover:bg-white transition">
+                   SIGN UP
+                 </button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
