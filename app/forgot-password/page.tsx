@@ -8,15 +8,53 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  // --- CLOSE ALERT HANDLER ---
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    // Only redirect if a path is set (for success cases)
+    if (alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   const handleReset = async () => {
+    // 1. Check if email is empty
     if (!email) {
-      alert("Please enter your email address.");
+      setAlertState({
+        show: true,
+        title: 'Input Required',
+        message: 'Please enter your email address.',
+        type: 'error',
+        redirectPath: ''
+      });
       return;
+    }
+
+    // 2. Validate Email Format (NEW)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        setAlertState({
+            show: true,
+            title: 'Invalid Email',
+            message: 'Please enter a valid email address (e.g., name@example.com).',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
     }
 
     setLoading(true);
     try {
-      // 1. REAL API CALL (Restored functionality)
+      // 3. REAL API CALL
       const response = await fetch('/api/forgot-password', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,12 +67,23 @@ export default function ForgotPassword() {
         throw new Error(data.error || 'Failed to send reset email');
       }
       
-      // 2. Success Feedback
-      alert('Password reset link has been sent to your email.');
-      router.push('/login');
+      // 4. Success Feedback (Triggers Redirect on Close)
+      setAlertState({
+        show: true,
+        title: 'Email Sent',
+        message: 'Password reset link has been sent to your email.',
+        type: 'success',
+        redirectPath: '/login'
+      });
 
     } catch (error: any) {
-      alert(error.message || "Something went wrong. Please try again.");
+      setAlertState({
+        show: true,
+        title: 'Error',
+        message: error.message || "Something went wrong. Please try again.",
+        type: 'error',
+        redirectPath: ''
+      });
     } finally {
       setLoading(false);
     }
@@ -107,14 +156,39 @@ export default function ForgotPassword() {
               </button>
 
               <div className="text-center mt-4">
-                 <Link href="/login" className="text-xs font-bold text-[#4A1D46] hover:text-[#9B5DE5] transition flex items-center justify-center gap-1">
-                   <span>←</span> Back to Login
-                 </Link>
+                  <Link href="/login" className="text-xs font-bold text-[#4A1D46] hover:text-[#9B5DE5] transition flex items-center justify-center gap-1">
+                    <span>←</span> Back to Login
+                  </Link>
               </div>
             </div>
         </div>
-
       </div>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

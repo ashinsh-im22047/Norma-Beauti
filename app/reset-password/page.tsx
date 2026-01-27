@@ -12,13 +12,47 @@ function ResetPasswordContent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  // --- CLOSE ALERT HANDLER ---
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    // Only redirect if a path is set (for success cases)
+    if (alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   const handleReset = async () => {
     // 1. Check Matching
-    if (password !== confirmPassword) return alert("Passwords do not match");
+    if (password !== confirmPassword) {
+        setAlertState({
+            show: true,
+            title: 'Mismatch',
+            message: 'Passwords do not match.',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
+    }
     
     // 2. Validate Password Length (At least 6 chars)
     if (password.length < 6) {
-        return alert("Password must be at least 6 characters long.");
+        setAlertState({
+            show: true,
+            title: 'Weak Password',
+            message: 'Password must be at least 6 characters long.',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
     }
 
     // 3. Validate Password Complexity (At least 2 types: Upper, Lower, Number)
@@ -26,15 +60,30 @@ function ResetPasswordContent() {
     const hasLower = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
     
-    // Count how many requirements are met
     const complexityCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasNumber ? 1 : 0);
 
     if (complexityCount < 2) {
-        return alert("Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number");
+        setAlertState({
+            show: true,
+            title: 'Weak Password',
+            message: 'Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
     }
 
     // 4. Check Token
-    if (!token) return alert("Invalid or missing token.");
+    if (!token) {
+        setAlertState({
+            show: true,
+            title: 'Invalid Link',
+            message: 'Invalid or missing reset token.',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
+    }
 
     setLoading(true);
     try {
@@ -47,13 +96,25 @@ function ResetPasswordContent() {
       const data = await res.json();
       
       if (res.ok) {
-        alert("Password successfully reset! Logging you in...");
-        router.push('/login'); 
+        // Success Dialog -> Redirect to Login
+        setAlertState({
+            show: true,
+            title: 'Password Reset!',
+            message: 'Your password has been updated successfully. Please log in.',
+            type: 'success',
+            redirectPath: '/login'
+        });
       } else {
-        alert(data.error || "Failed to reset password");
+        throw new Error(data.error || "Failed to reset password");
       }
-    } catch (error) {
-      alert("Something went wrong");
+    } catch (error: any) {
+        setAlertState({
+            show: true,
+            title: 'Error',
+            message: error.message || "Something went wrong",
+            type: 'error',
+            redirectPath: ''
+        });
     } finally {
       setLoading(false);
     }
@@ -135,8 +196,33 @@ function ResetPasswordContent() {
               </button>
             </div>
         </div>
-
       </div>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium whitespace-pre-line">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

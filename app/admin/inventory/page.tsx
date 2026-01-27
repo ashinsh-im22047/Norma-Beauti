@@ -22,6 +22,28 @@ export default function InventoryManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentCat, setCurrentCat] = useState({ id: '', name: '', description: '' });
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'success'
+  });
+
+  const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => {
+    setAlertState({ show: true, title, message, type });
+  };
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+  };
+
   useEffect(() => {
     fetchCategories();
     const closeMenu = () => setActiveMenuId(null);
@@ -46,8 +68,14 @@ export default function InventoryManagement() {
     try {
       await fetch('/api/logout', { method: 'POST' });
       localStorage.clear();
-      alert("Logged out successfully");
-      window.location.href = '/';
+      // Success Dialog -> Redirect to Home
+      setAlertState({
+        show: true,
+        title: "Logged Out",
+        message: "You have been logged out successfully.",
+        type: "success",
+        onConfirm: () => { window.location.href = '/'; }
+      });
     } catch (error) {
       console.error("Logout failed", error);
       localStorage.clear();
@@ -72,18 +100,28 @@ export default function InventoryManagement() {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault(); 
     e.stopPropagation(); 
-    if (!confirm("Are you sure you want to delete this category?")) return;
-    try {
-      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setActiveMenuId(null);   
-        await fetchCategories(); 
-      } else {
-        alert("Failed to delete category.");
-      }
-    } catch (error) {
-      alert("Network Error.");
-    }
+    
+    // Show Custom Confirmation Dialog
+    setAlertState({
+        show: true,
+        title: "Confirm Delete",
+        message: "Are you sure you want to delete this category? This action cannot be undone.",
+        type: "confirm",
+        onConfirm: async () => {
+            try {
+                const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    setActiveMenuId(null);   
+                    await fetchCategories();
+                    closeAlert(); 
+                } else {
+                    showAlert("Error", "Failed to delete category.");
+                }
+            } catch (error) {
+                showAlert("Error", "Network Error.");
+            }
+        }
+    });
   };
 
   const handleSave = async () => {
@@ -105,9 +143,10 @@ export default function InventoryManagement() {
       }
       if (!res.ok) throw new Error("API Error");
       setShowModal(false);
-      await fetchCategories(); 
+      await fetchCategories();
+      showAlert("Success", isEditing ? "Category Updated!" : "Category Created!", "success");
     } catch (error) {
-      alert("Error saving category");
+      showAlert("Error", "Error saving category");
     }
   };
 
@@ -260,6 +299,49 @@ export default function InventoryManagement() {
           </div>
         </div>
       )}
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX (Replaces Alerts/Confirms) --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-[#2E1029]/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/30 text-white transform transition-all scale-100">
+              
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border 
+                  ${alertState.type === 'error' ? 'bg-red-500/20 border-red-400 text-red-200' : 
+                    alertState.type === 'confirm' ? 'bg-yellow-500/20 border-yellow-400 text-yellow-200' : 
+                    'bg-green-500/20 border-green-400 text-green-200'}`}>
+                {alertState.type === 'error' ? '⚠️' : alertState.type === 'confirm' ? '❓' : '✅'}
+              </div>
+
+              <h3 className="text-2xl font-serif font-bold mb-2 text-[#F3E5F5]">
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#D883B7] mb-8 font-medium text-sm">
+                {alertState.message}
+              </p>
+
+              <div className="flex gap-3 justify-center">
+                  {alertState.type === 'confirm' && (
+                      <button 
+                        onClick={closeAlert}
+                        className="px-6 py-2 rounded-full font-bold border border-white/30 text-gray-300 hover:bg-white/10 transition-all"
+                      >
+                        Cancel
+                      </button>
+                  )}
+                  
+                  <button 
+                    onClick={alertState.type === 'confirm' && alertState.onConfirm ? alertState.onConfirm : (alertState.type === 'success' && alertState.onConfirm ? alertState.onConfirm : closeAlert)}
+                    className={`px-8 py-2 rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all
+                        ${alertState.type === 'error' ? 'bg-red-500 text-white' : 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white'}`}
+                  >
+                    {alertState.type === 'confirm' ? 'Yes, Confirm' : 'OK'}
+                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

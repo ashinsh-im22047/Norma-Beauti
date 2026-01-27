@@ -25,6 +25,27 @@ export default function ShopPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const itemsPerSlide = 4;
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'success' // 'success' or 'error'
+  });
+
+  const closeAlert = () => setAlertState({ ...alertState, show: false });
+
+  // --- ADD TO CART HANDLER ---
+  const handleAddToCart = (item: any) => {
+    // Show Elegant Success Dialog
+    setAlertState({
+        show: true,
+        title: 'Added to Cart',
+        message: `${item.name || item.productname} has been added to your cart.`,
+        type: 'success'
+    });
+  };
+
   useEffect(() => {
     const fetchNewArrivals = async () => {
       try {
@@ -94,7 +115,13 @@ export default function ShopPage() {
             <p className="text-[10px] text-gray-500 line-clamp-2 flex-grow italic">{item.desc || item.description || item.productdescription}</p>
             <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#f8bbd0]/30">
                 <span className="text-sm font-bold text-[#ad1457]">LKR {item.price}</span>
-                <button className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm">+</button>
+                {/* UPDATED: Added click handler for Dialog */}
+                <button 
+                  onClick={() => handleAddToCart(item)}
+                  className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm"
+                >
+                  +
+                </button>
             </div>
         </div>
     </div>
@@ -140,7 +167,6 @@ export default function ShopPage() {
 
       <main className="container mx-auto px-6 py-10 relative z-20">
         {!searchTerm && activeCategory === CATEGORIES[0].id && newArrivals.length > 0 && (
-            // UPDATED: Richer Pink Gradient for New Arrivals
             <div className="mb-14 bg-gradient-to-r from-[#880e4f] via-[#ad1457] to-[#d81b60] p-8 rounded-[2.5rem] shadow-2xl border border-white/20 relative">
                 <div className="flex items-center justify-between mb-8 relative z-10">
                     <button onClick={prevSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#ad1457] transition-all flex items-center justify-center text-xl group"><span className="group-hover:-translate-x-0.5 transition-transform">&lt;</span></button>
@@ -171,6 +197,34 @@ export default function ShopPage() {
             {isLoadingProducts ? (<div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ec407a]"></div></div>) : (<div className="grid grid-cols-2 md:grid-cols-4 gap-6">{filteredProducts.length > 0 ? (filteredProducts.map(item => <ProductCard key={item.id || item.productid} item={item} />)) : (<div className="col-span-full text-center py-20 flex flex-col items-center"><span className="text-4xl mb-2">🌸</span><p className="text-[#880e4f] font-serif italic">No treasures found.</p></div>)}</div>)}
         </div>
       </main>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX (Added Here) --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
+                {alertState.type === 'success' ? '🛍️' : '⚠️'}
+              </div>
+
+              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                Continue Shopping
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

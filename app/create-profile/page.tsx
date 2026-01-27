@@ -18,6 +18,22 @@ export default function CreateProfile() {
   const [gender, setGender] = useState('Select');
   const [loading, setLoading] = useState(false);
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    if (alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   useEffect(() => {
     if (!email) {
       router.push('/login');
@@ -39,11 +55,35 @@ export default function CreateProfile() {
   const handleSubmit = async () => {
     // 1. Phone Number Validation
     if (phoneDigits.length !== 9) {
-        alert("Please enter a valid phone number (9 digits after +94).");
+        setAlertState({
+            show: true,
+            title: 'Invalid Phone Number',
+            message: 'Please enter a valid phone number (9 digits after +94).',
+            type: 'error',
+            redirectPath: ''
+        });
         return;
     }
 
-    // 2. Combine Prefix + Digits
+    // 2. Date Validation (No Future Dates)
+    if (dob) {
+        const selectedDate = new Date(dob);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
+
+        if (selectedDate > today) {
+            setAlertState({
+                show: true,
+                title: 'Invalid Date',
+                message: 'Date of birth cannot be in the future.',
+                type: 'error',
+                redirectPath: ''
+            });
+            return;
+        }
+    }
+
+    // 3. Combine Prefix + Digits
     const finalPhoneNumber = "+94" + phoneDigits;
 
     setLoading(true);
@@ -66,15 +106,30 @@ export default function CreateProfile() {
       localStorage.setItem('userEmail', email || '');
       localStorage.setItem('userName', fullName);
 
-      alert('Profile Setup Complete!');
-      router.push('/shop');
+      // Success Dialog -> Redirect to Shop
+      setAlertState({
+        show: true,
+        title: 'Profile Setup Complete!',
+        message: 'Your profile has been created successfully.',
+        type: 'success',
+        redirectPath: '/shop'
+      });
 
     } catch (error) {
-      alert('Error saving profile.');
+        setAlertState({
+            show: true,
+            title: 'Error',
+            message: 'Error saving profile. Please try again.',
+            type: 'error',
+            redirectPath: ''
+        });
     } finally {
       setLoading(false);
     }
   };
+
+  // Get today's date for the max attribute
+  const todayDate = new Date().toISOString().split("T")[0];
 
   return (
     // MAIN BACKGROUND: Elegant Pink-Purple Gradient
@@ -140,8 +195,13 @@ export default function CreateProfile() {
               <div className="flex gap-4">
                 <div className="w-2/3 flex flex-col gap-1">
                     <label className="text-xs font-bold text-[#7B2C62] ml-3 uppercase">Date of Birth</label>
-                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
-                    className="w-full bg-white/50 text-[#2E1029] px-6 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm border border-white/50 transition-all"/>
+                    <input 
+                      type="date" 
+                      value={dob} 
+                      max={todayDate} // UI Validation: Prevents future dates
+                      onChange={(e) => setDob(e.target.value)}
+                      className="w-full bg-white/50 text-[#2E1029] px-6 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D883B7] text-sm border border-white/50 transition-all"
+                    />
                 </div>
                 <div className="w-1/3 flex flex-col gap-1">
                     <label className="text-xs font-bold text-[#7B2C62] ml-3 uppercase">Gender</label>
@@ -159,6 +219,32 @@ export default function CreateProfile() {
             </div>
         </div>
       </div>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

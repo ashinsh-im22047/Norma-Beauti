@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    // 1. Check User (We accept BOTH 'ADMIN' and 'customer' here)
+    // 1. Check User
     const [rows]: any = await db.query(
       'SELECT * FROM user WHERE email = ?', 
       [email] 
@@ -25,13 +25,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    // 3. Generate Token
+    // --- 3. CHECK EMAIL VERIFICATION (New Logic) ---
+    // We check the database column. Assuming it is named 'isVerified' or 'is_verified'.
+    // Adjust 'user.isVerified' if your DB column name is different (e.g., user.is_verified).
+    const isVerified = user.isVerified === 1 || user.isVerified === true;
+
+    if (!isVerified) {
+        // SECURITY: We return here immediately. 
+        // We do NOT generate a token. We do NOT set a cookie.
+        // We return the user object so the frontend knows to show the "Verification Required" dialog.
+        return NextResponse.json({ 
+            message: "Verification pending",
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                isVerified: false // Frontend uses this to block access
+            }
+        }, { status: 200 }); 
+    }
+
+    // --- 4. Generate Token (Only if Verified) ---
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key');
-    
-    // Convert DB role to lowercase for the token (middleware prefers lowercase)
     const tokenRole = user.role.toLowerCase(); 
 
-    // Set expiry: 1 hour for Admin, 7 days for others
     const expiry = tokenRole === 'admin' ? '1h' : '7d';
     const maxAge = tokenRole === 'admin' ? 3600 : 604800;
 
@@ -41,15 +58,14 @@ export async function POST(req: Request) {
       .setExpirationTime(expiry) 
       .sign(secret);
 
-    // 4. Create Response
+    // 5. Create Response with Cookie
     const response = NextResponse.json({ 
         message: "Login Successful", 
         user: {
             id: user.id,
             email: user.email,
-            // Return the role EXACTLY as it is in the database ('ADMIN') 
-            // so the frontend check (role === 'ADMIN') works.
-            role: user.role 
+            role: user.role,
+            isVerified: true 
         }
     });
 

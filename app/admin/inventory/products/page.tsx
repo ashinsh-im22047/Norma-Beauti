@@ -36,6 +36,28 @@ function ProductListContent() {
   // Loading State for Save Button
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'success'
+  });
+
+  const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => {
+    setAlertState({ show: true, title, message, type });
+  };
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+  };
+
   useEffect(() => { 
     if(categoryId) fetchData(); 
     const closeMenu = () => setActiveMenuId(null);
@@ -62,7 +84,7 @@ function ProductListContent() {
             body: JSON.stringify({ status: newStatus })
         });
         if (res.ok) fetchData(); 
-    } catch (error) { alert("Action failed"); }
+    } catch (error) { showAlert("Error", "Action failed"); }
   };
 
   const getLists = () => {
@@ -86,14 +108,14 @@ function ProductListContent() {
   const { pending, approved, standard } = getLists();
 
   const handleSave = async () => {
-      if (!formData.name) return alert("Please fill in the Name field.");
-      if (!formData.price) return alert("Please fill in the Price field.");
-      if (!formData.quantity) return alert("Please fill in the Quantity field.");
+      if (!formData.name) return showAlert("Missing Input", "Please fill in the Name field.");
+      if (!formData.price) return showAlert("Missing Input", "Please fill in the Price field.");
+      if (!formData.quantity) return showAlert("Missing Input", "Please fill in the Quantity field.");
       
-      if (parseFloat(formData.price) < 0) return alert("Price cannot be negative.");
-      if (parseInt(formData.quantity) < 0) return alert("Quantity cannot be negative.");
+      if (parseFloat(formData.price) < 0) return showAlert("Invalid Input", "Price cannot be negative.");
+      if (parseInt(formData.quantity) < 0) return showAlert("Invalid Input", "Quantity cannot be negative.");
 
-      if (!formData.image && !fileToUpload) return alert("Please provide an image.");
+      if (!formData.image && !fileToUpload) return showAlert("Missing Input", "Please provide an image.");
 
       setIsSubmitting(true);
 
@@ -122,23 +144,32 @@ function ProductListContent() {
         }
         
         if (res.ok) { 
-            alert(isEditing ? "Updated Successfully!" : "Added Successfully!");
+            showAlert("Success", isEditing ? "Updated Successfully!" : "Added Successfully!", "success");
             resetForm(); 
             fetchData(); 
         } else {
             throw new Error("Failed");
         }
     } catch(err) { 
-        alert("Error saving product."); 
+        showAlert("Error", "Error saving product."); 
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this item?")) return;
-    await fetch(`/api/inventory-items/${id}`, { method: 'DELETE' });
-    fetchData();
+  const handleDelete = (id: string) => {
+    // Show Confirmation Dialog
+    setAlertState({
+        show: true,
+        title: "Confirm Delete",
+        message: "Are you sure you want to delete this item? This action cannot be undone.",
+        type: "confirm",
+        onConfirm: async () => {
+            await fetch(`/api/inventory-items/${id}`, { method: 'DELETE' });
+            fetchData();
+            closeAlert();
+        }
+    });
   };
   
   const resetForm = () => { setShowModal(false); setIsEditing(false); setFileToUpload(null); setFormData({ name: '', price: '', quantity: '', description: '', image: '' }); };
@@ -150,7 +181,7 @@ function ProductListContent() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- REUSABLE CARD (FIXED: Dynamic z-index added) ---
+  // --- REUSABLE CARD (Dynamic z-index) ---
   const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => (
     <div key={item.id} className={`
         bg-[#5D2E46]/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/10 
@@ -158,9 +189,6 @@ function ProductListContent() {
         ${isPending ? 'border-yellow-400/50 bg-[#5D2E46]/95' : ''}
         ${activeMenuId === item.id ? 'z-50' : 'z-0'} 
     `}>
-        {/* ^^^ The line above fixes the overlapping issue ^^^ */}
-        
-        {/* LEFT: Image & Text */}
         <div className="flex items-center gap-5 flex-1 overflow-hidden">
             <div className="h-16 w-16 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/20 overflow-hidden shadow-inner">
                {item.image && item.image.startsWith('http') ? (
@@ -170,13 +198,11 @@ function ProductListContent() {
                )}
             </div>
             <div className="flex flex-col min-w-0">
-               {/* Updated text color to White/Light Gray for contrast */}
                <h3 className="font-bold text-white truncate text-lg tracking-wide">{item.name}</h3>
                <p className="text-xs text-gray-300 truncate max-w-md opacity-80">{item.desc || "No description"}</p>
             </div>
         </div>
 
-        {/* RIGHT: Price & Menu */}
         <div className="flex items-center gap-8 shrink-0 ml-4">
             <div className="text-right hidden sm:block">
                 <p className="text-[10px] text-[#D883B7] font-bold uppercase tracking-wider opacity-90">Price</p>
@@ -189,7 +215,6 @@ function ProductListContent() {
                 </span>
             </div>
 
-            {/* ACTIONS */}
             {isPending ? (
                <div className="flex gap-2">
                    <button onClick={(e) => handleApproval(e, item.id, 'approved')} className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-green-600 shadow-md">Add</button>
@@ -211,10 +236,7 @@ function ProductListContent() {
   );
 
   return (
-    // MAIN BACKGROUND: Elegant Pink-Purple Gradient
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
-      
-      {/* HEADER: Darkest Elegant Gradient */}
       <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white py-4 px-8 flex justify-between items-center shadow-lg sticky top-0 z-50">
         <div className="flex items-center gap-3">
            <button onClick={() => router.back()} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
@@ -223,8 +245,6 @@ function ProductListContent() {
       </header>
 
       <main className="container mx-auto px-6 py-8 relative z-10 max-w-6xl">
-        
-        {/* --- CONTROLS CARD (UPDATED: Dark Glass Card) --- */}
         <div className="bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-2xl border border-white/20 mb-8 text-white">
             <div className="flex flex-col md:flex-row justify-between items-end gap-6">
                 <div>
@@ -233,7 +253,6 @@ function ProductListContent() {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Search */}
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-[#4A1D46]">🔍</span>
                         <input 
@@ -241,14 +260,12 @@ function ProductListContent() {
                           className="pl-10 pr-4 py-2 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] w-48 shadow-inner placeholder-[#4A1D46]/50"
                         />
                     </div>
-                    {/* Sort */}
                     <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="py-2 px-3 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-medium text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D883B7] shadow-sm">
                         <option value="newest">Newest First</option>
                         <option value="price-low">Price: Low to High</option>
                         <option value="price-high">Price: High to Low</option>
                         <option value="qty">Quantity: Low to High</option>
                     </select>
-                    {/* Add Button */}
                     <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-6 py-2 rounded-xl shadow-lg font-bold hover:opacity-90 hover:scale-105 transition-all flex items-center gap-2 border border-white/20">
                       <span className="text-xl leading-none">+</span> Add
                     </button>
@@ -256,13 +273,9 @@ function ProductListContent() {
             </div>
         </div>
 
-        {/* --- LIST VIEW --- */}
         <div className="flex flex-col gap-4">
-            
-            {/* SCENARIO A: CUSTOM BOX PAGE (Split View) */}
             {isCustomBox ? (
                 <div className="flex flex-col gap-10">
-                    {/* 1. PENDING LIST */}
                     {pending.length > 0 && (
                         <div>
                             <h3 className="text-[#4A1D46] font-bold text-xl mb-4 flex items-center gap-3 pl-2">
@@ -273,8 +286,6 @@ function ProductListContent() {
                             </div>
                         </div>
                     )}
-
-                    {/* 2. APPROVED LIST */}
                     <div>
                         <h3 className="text-[#4A1D46] font-bold text-xl mb-4 pl-2">✅ Available Products</h3>
                         <div className="flex flex-col gap-4">
@@ -284,12 +295,10 @@ function ProductListContent() {
                     </div>
                 </div>
             ) : (
-                /* SCENARIO B: NORMAL PAGE (Standard List) */
                 <div className="flex flex-col gap-4">
                     {standard.map(item => <ProductCard key={item.id} item={item} />)}
                 </div>
             )}
-            
         </div>
       </main>
 
@@ -329,6 +338,49 @@ function ProductListContent() {
           </div>
         </div>
       )}
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX (Replaces Alerts/Confirms) --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-[#2E1029]/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/30 text-white transform transition-all scale-100">
+              
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border 
+                  ${alertState.type === 'error' ? 'bg-red-500/20 border-red-400 text-red-200' : 
+                    alertState.type === 'confirm' ? 'bg-yellow-500/20 border-yellow-400 text-yellow-200' : 
+                    'bg-green-500/20 border-green-400 text-green-200'}`}>
+                {alertState.type === 'error' ? '⚠️' : alertState.type === 'confirm' ? '❓' : '✅'}
+              </div>
+
+              <h3 className="text-2xl font-serif font-bold mb-2 text-[#F3E5F5]">
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#D883B7] mb-8 font-medium text-sm">
+                {alertState.message}
+              </p>
+
+              <div className="flex gap-3 justify-center">
+                  {alertState.type === 'confirm' && (
+                      <button 
+                        onClick={closeAlert}
+                        className="px-6 py-2 rounded-full font-bold border border-white/30 text-gray-300 hover:bg-white/10 transition-all"
+                      >
+                        Cancel
+                      </button>
+                  )}
+                  
+                  <button 
+                    onClick={alertState.type === 'confirm' && alertState.onConfirm ? alertState.onConfirm : closeAlert}
+                    className={`px-8 py-2 rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all
+                        ${alertState.type === 'error' ? 'bg-red-500 text-white' : 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white'}`}
+                  >
+                    {alertState.type === 'confirm' ? 'Yes, Delete' : 'OK'}
+                  </button>
+              </div>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

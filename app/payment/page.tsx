@@ -8,6 +8,23 @@ export default function PaymentPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'slip' | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    // Redirect if a path is provided (for success case)
+    if (alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   // Dummy User Data for Confirmation
   const [deliveryDetails, setDeliveryDetails] = useState({
     name: "Prabhani Maheeka",
@@ -18,12 +35,29 @@ export default function PaymentPage() {
   const totalAmount = "11,950";
 
   const handleConfirmOrder = () => {
-    if (!paymentMethod) return alert("Please select a payment method.");
+    if (!paymentMethod) {
+        setAlertState({
+            show: true,
+            title: 'Payment Method Required',
+            message: 'Please select a payment method to proceed.',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
+    }
+
     setLoading(true);
+    
+    // Simulate API call
     setTimeout(() => {
-        alert("Order Placed Successfully!");
-        router.push('/my-orders'); 
         setLoading(false);
+        setAlertState({
+            show: true,
+            title: 'Order Placed!',
+            message: 'Your order has been placed successfully.',
+            type: 'success',
+            redirectPath: '/my-orders'
+        });
     }, 1500);
   };
 
@@ -66,32 +100,30 @@ export default function PaymentPage() {
                     <h3 className="text-lg font-bold mb-4 ml-2 text-[#4A1D46]">Select Payment Method</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         
-                        {/* Cash on Delivery */}
+                        {/* Cash on Delivery (Icons Removed) */}
                         <div 
                             onClick={() => setPaymentMethod('cod')}
-                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center gap-3 shadow-sm ${
+                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center justify-center gap-2 shadow-sm h-32 ${
                                 paymentMethod === 'cod' 
                                 ? 'bg-[#9B5DE5]/10 border-[#9B5DE5] shadow-md scale-105' 
                                 : 'bg-white/40 border-white/60 hover:bg-white/60'
                             }`}
                         >
-                            <span className="text-4xl">🚚</span>
-                            <span className="font-bold text-[#4A1D46]">Cash on Delivery</span>
-                            {paymentMethod === 'cod' && <span className="text-[#9B5DE5] text-2xl animate-bounce">●</span>}
+                            <span className="font-bold text-[#4A1D46] text-lg">Cash on Delivery</span>
+                            {paymentMethod === 'cod' && <span className="text-[#9B5DE5] text-xs font-bold animate-pulse">Selected</span>}
                         </div>
 
-                        {/* Upload Slip */}
+                        {/* Upload Slip (Icons Removed) */}
                         <div 
                             onClick={() => setPaymentMethod('slip')}
-                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center gap-3 shadow-sm ${
+                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center justify-center gap-2 shadow-sm h-32 ${
                                 paymentMethod === 'slip' 
                                 ? 'bg-[#D883B7]/10 border-[#D883B7] shadow-md scale-105' 
                                 : 'bg-white/40 border-white/60 hover:bg-white/60'
                             }`}
                         >
-                            <span className="text-4xl">📄</span>
-                            <span className="font-bold text-[#4A1D46]">Upload Bank Slip</span>
-                            {paymentMethod === 'slip' && <span className="text-[#D883B7] text-2xl animate-bounce">●</span>}
+                            <span className="font-bold text-[#4A1D46] text-lg">Upload Bank Slip</span>
+                            {paymentMethod === 'slip' && <span className="text-[#D883B7] text-xs font-bold animate-pulse">Selected</span>}
                         </div>
                     </div>
                 </div>
@@ -128,6 +160,36 @@ export default function PaymentPage() {
             </div>
         </div>
       </main>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
+              
+              <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
+                {alertState.type === 'success' ? '🎉' : '⚠️'}
+              </div>
+
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

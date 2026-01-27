@@ -11,33 +11,83 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  // --- CLOSE ALERT HANDLER ---
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    // Only redirect if a path is strictly defined
+    if (alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   const handleRegister = async () => {
-    // 1. Validation: Check if passwords match
+    // 1. Strict Email Format Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        setAlertState({
+            show: true,
+            title: 'Invalid Email',
+            message: 'Please enter a valid email address (e.g., name@example.com).',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
+    }
+
+    // 2. Validation: Check if passwords match
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setAlertState({
+        show: true,
+        title: 'Validation Error',
+        message: 'Passwords do not match!',
+        type: 'error',
+        redirectPath: ''
+      });
       return;
     }
 
-    // 2. Validate Password Length (At least 6 chars)
+    // 3. Validate Password Length
     if (password.length < 6) {
-        return alert("Password must be at least 6 characters long.");
+        setAlertState({
+            show: true,
+            title: 'Weak Password',
+            message: 'Password must be at least 6 characters long.',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
     }
 
-    // 3. Validate Password Complexity (At least 2 types: Upper, Lower, Number)
+    // 4. Validate Password Complexity
     const hasUpper = /[A-Z]/.test(password);
     const hasLower = /[a-z]/.test(password);
     const hasNumber = /[0-9]/.test(password);
     
-    // Count how many requirements are met
     const complexityCount = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasNumber ? 1 : 0);
 
     if (complexityCount < 2) {
-        return alert("Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number");
+        setAlertState({
+            show: true,
+            title: 'Weak Password',
+            message: 'Password must contain at least 2 of the following:\n- Uppercase Letter\n- Lowercase Letter\n- Number',
+            type: 'error',
+            redirectPath: ''
+        });
+        return;
     }
 
     setLoading(true);
     try {
-      // 4. Send only email and password to backend
+      // 5. Send to backend
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,14 +97,32 @@ export default function Register() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle "Email already exists"
+        if (data.error && data.error.toLowerCase().includes('exist')) {
+            throw new Error('This email is already registered. Please log in instead.');
+        }
         throw new Error(data.error || 'Registration failed');
       }
 
-      alert('Registration successful! Please check your email to verify.');
-      router.push('/login');
+      // --- SUCCESS: BLOCK ACCESS & FORCE VERIFICATION ---
+      // We do NOT log them in. We do NOT send them to profile.
+      // We send them back to LOGIN with a message to check email.
+      setAlertState({
+        show: true,
+        title: 'Verification Required',
+        message: `Registration successful!\n\nA verification email has been sent to ${email}.\n\nPlease check your inbox and click the link to verify your account. You cannot log in until verified.`,
+        type: 'success',
+        redirectPath: '/login' // Send back to login, DO NOT allow access.
+      });
 
     } catch (error: any) {
-      alert(error.message);
+      setAlertState({
+        show: true,
+        title: 'Registration Failed',
+        message: error.message,
+        type: 'error',
+        redirectPath: ''
+      });
     } finally {
       setLoading(false);
     }
@@ -143,6 +211,36 @@ export default function Register() {
             </div>
         </div>
       </div>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
+                {alertState.type === 'success' ? '✉️' : '⚠️'}
+              </div>
+
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium whitespace-pre-line text-sm leading-relaxed">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }

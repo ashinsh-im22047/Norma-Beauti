@@ -10,6 +10,24 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // --- CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ 
+    show: false, 
+    title: '', 
+    message: '', 
+    type: 'error', // 'success' or 'error'
+    redirectPath: '' 
+  });
+
+  // --- CLOSE ALERT HANDLER ---
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+    // Only redirect if it was a success alert
+    if (alertState.type === 'success' && alertState.redirectPath) {
+      router.push(alertState.redirectPath);
+    }
+  };
+
   const handleLogin = async () => {
     setLoading(true);
     try {
@@ -25,6 +43,22 @@ export default function Login() {
         throw new Error(data.error || 'Login failed');
       }
 
+      // --- CRITICAL CHECK: EMAIL VERIFICATION ---
+      // Assuming your backend returns 'isVerified' in the user object
+      // If your backend field is named differently (e.g. 'emailVerified'), update this line.
+      if (data.user && !data.user.isVerified) { 
+          setAlertState({
+            show: true,
+            title: 'Verification Required',
+            message: 'Your email address is not verified yet.\n\nPlease check your inbox for the verification link before logging in.',
+            type: 'error',
+            redirectPath: '' // Stay on login page
+          });
+          setLoading(false);
+          return; // STOP LOGIN PROCESS HERE
+      }
+
+      // --- PROCEED ONLY IF VERIFIED ---
       if (data.user) {
         localStorage.setItem('userId', data.user.id);
         localStorage.setItem('userEmail', data.user.email);
@@ -33,16 +67,27 @@ export default function Login() {
 
       document.cookie = "user_session=true; path=/; max-age=86400"; 
 
-      alert('Login Successful!');
+      // --- DETERMINE REDIRECT PATH ---
+      const targetPath = data.user.role === 'ADMIN' ? '/admin/dashboard' : '/shop';
 
-      if (data.user.role === 'ADMIN') {
-        router.push('/admin/dashboard'); 
-      } else {
-        router.push('/shop'); 
-      }
+      // --- SHOW SUCCESS DIALOG ---
+      setAlertState({
+        show: true,
+        title: 'Welcome Back',
+        message: 'Login Successful',
+        type: 'success',
+        redirectPath: targetPath
+      });
 
     } catch (error: any) {
-      alert(error.message);
+      // --- SHOW ERROR DIALOG ---
+      setAlertState({
+        show: true,
+        title: 'Login Failed',
+        message: error.message,
+        type: 'error',
+        redirectPath: ''
+      });
     } finally {
       setLoading(false);
     }
@@ -120,17 +165,42 @@ export default function Login() {
               </button>
 
               <div className="text-center flex flex-col gap-2 mt-4">
-                 <Link href="/forgot-password" className="text-[#7B2C62] text-xs font-semibold hover:text-[#9B5DE5] transition">
-                   Forgot your password?
-                 </Link>
-                 <p className="text-[#4A1D46] text-xs">
-                   Don't have an account? <Link href="/register" className="font-bold text-[#D883B7] hover:underline hover:text-[#9B5DE5] transition">Sign up</Link>
-                 </p>
+                  <Link href="/forgot-password" className="text-[#7B2C62] text-xs font-semibold hover:text-[#9B5DE5] transition">
+                    Forgot your password?
+                  </Link>
+                  <p className="text-[#4A1D46] text-xs">
+                    Don't have an account? <Link href="/register" className="font-bold text-[#D883B7] hover:underline hover:text-[#9B5DE5] transition">Sign up</Link>
+                  </p>
               </div>
             </div>
         </div>
-
       </div>
+
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {alertState.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+              
+              <h3 className={`text-2xl font-serif font-bold mb-2 ${
+                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
+              }`}>
+                {alertState.title}
+              </h3>
+              
+              <p className="text-[#7B2C62] mb-8 font-medium whitespace-pre-line">
+                {alertState.message}
+              </p>
+
+              <button 
+                onClick={closeAlert}
+                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+              >
+                OK
+              </button>
+           </div>
+        </div>
+      )}
+
     </div>
   );
 }
