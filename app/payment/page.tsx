@@ -1,163 +1,267 @@
 "use client";
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+
+import React, { useEffect, useState } from 'react';
 import CustomerHeader from '@/components/CustomerHeader';
+import { useRouter } from 'next/navigation';
 
 export default function PaymentPage() {
   const router = useRouter();
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'slip' | null>(null);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // FORM STATE
+  const [details, setDetails] = useState({ 
+    name: '', 
+    address: '', 
+    phone: '' // Stores full format: +947XXXXXXXX
+  });
+  
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Slip'>('COD');
+  const [slipFile, setSlipFile] = useState<string | null>(null);
 
   // --- CUSTOM ALERT STATE ---
   const [alertState, setAlertState] = useState({ 
     show: false, 
+    type: 'success', // 'success' or 'error'
     title: '', 
-    message: '', 
-    type: 'error', // 'success' or 'error'
-    redirectPath: '' 
+    message: '',
+    redirect: '' // Optional redirection path
   });
 
   const closeAlert = () => {
-    setAlertState({ ...alertState, show: false });
-    // Redirect if a path is provided (for success case)
-    if (alertState.redirectPath) {
-      router.push(alertState.redirectPath);
+    setAlertState(prev => ({ ...prev, show: false }));
+    // If a redirect path exists (e.g., after success), navigate there
+    if (alertState.redirect) {
+        router.push(alertState.redirect);
     }
   };
 
-  // Dummy User Data for Confirmation
-  const [deliveryDetails, setDeliveryDetails] = useState({
-    name: "Prabhani Maheeka",
-    address: "123, Flower Road, Colombo 07",
-    phone: "+94 77 123 4567"
-  });
+  useEffect(() => {
+    // 1. Load Cart Items
+    const storedItems = localStorage.getItem('checkoutItems');
+    if (storedItems) {
+        setItems(JSON.parse(storedItems));
+    } else {
+        router.push('/cart');
+    }
 
-  const totalAmount = "11,950";
+    // 2. FETCH PROFILE DATA (To Pre-fill Form)
+    const fetchProfileData = async () => {
+      try {
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+           const data = await res.json();
+           setDetails({
+             name: data.name || '',
+             address: data.address || '',
+             phone: data.phone || '' 
+           });
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+    
+    fetchProfileData();
+  }, [router]);
 
-  const handleConfirmOrder = () => {
-    if (!paymentMethod) {
+  // --- PHONE INPUT HANDLER ---
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const numbersOnly = val.replace(/[^0-9]/g, '');
+    
+    // Limit to 9 digits
+    if (numbersOnly.length <= 9) {
+        setDetails({ ...details, phone: `+94${numbersOnly}` });
+    }
+  };
+
+  const getPhoneDigits = () => {
+    if (!details.phone) return '';
+    return details.phone.startsWith('+94') ? details.phone.slice(3) : details.phone;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setSlipFile(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // --- STRICT VALIDATION WITH CUSTOM DIALOGS ---
+
+    // 1. Validate Name
+    if (!details.name.trim()) {
         setAlertState({
-            show: true,
-            title: 'Payment Method Required',
-            message: 'Please select a payment method to proceed.',
-            type: 'error',
-            redirectPath: ''
+            show: true, type: 'error', title: 'Missing Information', 
+            message: 'Name is required. Please fill in your name.', redirect: ''
+        });
+        return;
+    }
+
+    // 2. Validate Address
+    if (!details.address.trim()) {
+        setAlertState({
+            show: true, type: 'error', title: 'Missing Information', 
+            message: 'Address is required. Please fill in your delivery address.', redirect: ''
+        });
+        return;
+    }
+
+    // 3. Validate Phone (Must be exactly 9 digits after +94)
+    const phoneDigits = getPhoneDigits();
+    if (phoneDigits.length !== 9) {
+        setAlertState({
+            show: true, type: 'error', title: 'Invalid Phone Number', 
+            message: 'Please enter exactly 9 digits after +94.', redirect: ''
+        });
+        return;
+    }
+
+    // 4. Validate Slip
+    if (paymentMethod === 'Slip' && !slipFile) {
+        setAlertState({
+            show: true, type: 'error', title: 'Payment Slip Required', 
+            message: 'Please upload the bank transfer slip to continue.', redirect: ''
         });
         return;
     }
 
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-        setLoading(false);
-        setAlertState({
-            show: true,
-            title: 'Order Placed!',
-            message: 'Your order has been placed successfully.',
-            type: 'success',
-            redirectPath: '/my-orders'
+    const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items,
+                total,
+                method: paymentMethod,
+                slip: slipFile,
+                details 
+            })
         });
-    }, 1500);
+
+        if (res.ok) {
+            localStorage.removeItem('checkoutItems');
+            // SUCCESS DIALOG WITH REDIRECT
+            setAlertState({
+                show: true, type: 'success', title: 'Order Placed! 🚀', 
+                message: 'Your order has been placed successfully.', 
+                redirect: '/profile/my-orders'
+            });
+        } else {
+            const err = await res.json();
+            setAlertState({
+                show: true, type: 'error', title: 'Order Failed', 
+                message: err.error || 'Failed to place order. Please try again.', redirect: ''
+            });
+        }
+    } catch (error) { 
+        console.error(error);
+        setAlertState({
+            show: true, type: 'error', title: 'System Error', 
+            message: 'Something went wrong. Please check your connection.', redirect: ''
+        });
+    } finally { 
+        setLoading(false); 
+    }
   };
 
+  const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#4A1D46]">
+    <div className="min-h-screen bg-[#fff0f5]">
       <CustomerHeader />
-      
-      <div className="fixed top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="fixed bottom-0 right-0 w-96 h-96 bg-[#9B5DE5]/20 rounded-full blur-[120px] pointer-events-none"></div>
-
-      <main className="container mx-auto px-6 py-12 relative z-10 flex justify-center">
-        <div className="w-full max-w-3xl bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
-            
-            <div className="flex items-center gap-4 mb-8 border-b border-[#D883B7]/30 pb-4">
-                <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/50 hover:bg-white shadow-sm transition">←</button>
-                <h1 className="text-3xl font-serif font-bold text-[#4A1D46]">Checkout & Pay</h1>
-            </div>
-
-            <div className="flex flex-col gap-6">
+      <main className="container mx-auto px-6 py-12 flex justify-center">
+        <div className="w-full max-w-4xl bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-xl border border-white/60">
+             <h2 className="text-3xl font-serif font-bold text-[#880e4f] mb-8 text-center">Checkout</h2>
+             
+             <form onSubmit={handlePlaceOrder} className="flex flex-col md:flex-row gap-10">
                 
-                {/* --- 1. CONFIRM DELIVERY DETAILS (Attractive Box) --- */}
-                <div className="bg-white/60 rounded-3xl p-6 border border-white/60 shadow-sm relative overflow-hidden group hover:shadow-md transition">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-[#D883B7]"></div>
-                    <div className="flex justify-between items-start mb-2">
-                         <h3 className="text-sm font-bold text-[#7B2C62] uppercase tracking-wider flex items-center gap-2">
-                            <span>📍</span> Delivery Details
-                         </h3>
-                         <button className="text-xs text-[#9B5DE5] font-bold underline hover:text-[#4A1D46]">Edit</button>
-                    </div>
+                {/* 1. DELIVERY DETAILS */}
+                <div className="flex-1 space-y-6">
+                    <h3 className="text-xl font-bold text-[#ad1457]">1. Delivery Details</h3>
+                    <p className="text-xs text-gray-500 mb-4">Edit address for this order if needed.</p>
                     
-                    <div className="ml-6 space-y-1">
-                        <p className="text-lg font-bold text-[#4A1D46]">{deliveryDetails.name}</p>
-                        <p className="text-sm text-gray-600">{deliveryDetails.address}</p>
-                        <p className="text-sm text-gray-600">{deliveryDetails.phone}</p>
+                    <div>
+                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Name</label>
+                        <input 
+                            type="text" 
+                            value={details.name} 
+                            onChange={e => setDetails({...details, name: e.target.value})} 
+                            placeholder="Enter your full name"
+                            className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:border-[#880e4f] outline-none" 
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Address</label>
+                        <input 
+                            type="text" 
+                            value={details.address} 
+                            onChange={e => setDetails({...details, address: e.target.value})} 
+                            placeholder="Enter your address"
+                            className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:border-[#880e4f] outline-none" 
+                        />
+                    </div>
+
+                    {/* PHONE INPUT WITH FIXED +94 */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Phone</label>
+                        <div className="flex items-center w-full p-3 rounded-xl bg-white border border-gray-200 focus-within:border-[#880e4f]">
+                            <span className="text-gray-500 font-bold mr-2 select-none">+94</span>
+                            <input 
+                                type="text" 
+                                value={getPhoneDigits()} 
+                                onChange={handlePhoneChange} 
+                                placeholder="7XXXXXXXX"
+                                maxLength={9}
+                                className="w-full outline-none bg-transparent" 
+                            />
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 9 digits.</p>
                     </div>
                 </div>
 
-                {/* --- 2. PAYMENT METHOD SELECTION --- */}
-                <div>
-                    <h3 className="text-lg font-bold mb-4 ml-2 text-[#4A1D46]">Select Payment Method</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        
-                        {/* Cash on Delivery (Icons Removed) */}
-                        <div 
-                            onClick={() => setPaymentMethod('cod')}
-                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center justify-center gap-2 shadow-sm h-32 ${
-                                paymentMethod === 'cod' 
-                                ? 'bg-[#9B5DE5]/10 border-[#9B5DE5] shadow-md scale-105' 
-                                : 'bg-white/40 border-white/60 hover:bg-white/60'
-                            }`}
-                        >
-                            <span className="font-bold text-[#4A1D46] text-lg">Cash on Delivery</span>
-                            {paymentMethod === 'cod' && <span className="text-[#9B5DE5] text-xs font-bold animate-pulse">Selected</span>}
-                        </div>
+                {/* 2. PAYMENT METHOD */}
+                <div className="flex-1 space-y-6">
+                    <h3 className="text-xl font-bold text-[#ad1457]">2. Payment Method</h3>
+                    <div className="flex gap-4">
+                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'COD' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500'}`}>
+                            <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('COD')} />
+                            Cash On Delivery
+                        </label>
+                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'Slip' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500'}`}>
+                            <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('Slip')} />
+                            Upload Slip
+                        </label>
+                    </div>
 
-                        {/* Upload Slip (Icons Removed) */}
-                        <div 
-                            onClick={() => setPaymentMethod('slip')}
-                            className={`cursor-pointer p-6 rounded-3xl border transition-all flex flex-col items-center justify-center gap-2 shadow-sm h-32 ${
-                                paymentMethod === 'slip' 
-                                ? 'bg-[#D883B7]/10 border-[#D883B7] shadow-md scale-105' 
-                                : 'bg-white/40 border-white/60 hover:bg-white/60'
-                            }`}
-                        >
-                            <span className="font-bold text-[#4A1D46] text-lg">Upload Bank Slip</span>
-                            {paymentMethod === 'slip' && <span className="text-[#D883B7] text-xs font-bold animate-pulse">Selected</span>}
+                    {paymentMethod === 'Slip' && (
+                        <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-center">
+                            <p className="text-sm text-gray-500 mb-2">Upload Bank Transfer Slip</p>
+                            <input type="file" accept="image/*" onChange={handleFileChange} />
                         </div>
+                    )}
+
+                    <div className="pt-6 border-t mt-4">
+                        <div className="flex justify-between text-xl font-bold text-[#880e4f] mb-4">
+                            <span>Total</span>
+                            <span>LKR {total.toFixed(2)}</span>
+                        </div>
+                        <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-[#880e4f] to-[#d81b60] text-white rounded-xl font-bold shadow-lg hover:scale-[1.02] transition-all disabled:opacity-70">
+                            {loading ? "Placing Order..." : "Place Order"}
+                        </button>
                     </div>
                 </div>
-
-                {/* Bank Slip Upload Area */}
-                {paymentMethod === 'slip' && (
-                    <div className="bg-[#FFF0F5] p-6 rounded-3xl border border-[#F3E5F5] animate-fade-in-up">
-                        <h4 className="font-bold text-[#4A1D46] mb-2">Bank Details</h4>
-                        <div className="text-sm text-[#7B2C62] mb-4 space-y-1">
-                            <p>Bank: <span className="font-bold">Commercial Bank</span></p>
-                            <p>Account No: <span className="font-bold">1234-5678-9000</span></p>
-                            <p>Branch: <span className="font-bold">Colombo 07</span></p>
-                        </div>
-                        <label className="block text-xs font-bold text-[#4A1D46] uppercase mb-2">Attach Slip</label>
-                        <input type="file" className="w-full bg-white p-3 rounded-xl border border-gray-200 text-sm"/>
-                    </div>
-                )}
-
-                {/* --- 3. CONFIRM BUTTON --- */}
-                <div className="mt-4 pt-4 border-t border-[#D883B7]/30">
-                    <div className="flex justify-between items-center mb-4 px-2">
-                        <span className="text-sm text-[#7B2C62]">Total Amount</span>
-                        <span className="text-2xl font-bold text-[#4A1D46]">LKR {totalAmount}</span>
-                    </div>
-                    <button 
-                        onClick={handleConfirmOrder}
-                        disabled={loading}
-                        className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all tracking-wide text-lg"
-                    >
-                        {loading ? 'Processing...' : 'Place Order'}
-                    </button>
-                </div>
-
-            </div>
+             </form>
         </div>
       </main>
 
@@ -166,13 +270,11 @@ export default function PaymentPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
               
-              <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
-                {alertState.type === 'success' ? '🎉' : '⚠️'}
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'success' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
+                {alertState.type === 'success' ? '✅' : '⚠️'}
               </div>
 
-              <h3 className={`text-2xl font-serif font-bold mb-2 ${
-                  alertState.type === 'error' ? 'text-[#880E4F]' : 'text-[#4A1D46]'
-              }`}>
+              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">
                 {alertState.title}
               </h3>
               
@@ -182,9 +284,9 @@ export default function PaymentPage() {
 
               <button 
                 onClick={closeAlert}
-                className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
+                className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#880e4f] to-[#d81b60]' : 'bg-gray-800'}`}
               >
-                OK
+                {alertState.type === 'success' ? 'Okay' : 'Close'}
               </button>
            </div>
         </div>

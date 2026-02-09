@@ -2,19 +2,57 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; 
+// import Image from 'next/image'; // Unused, but kept as requested
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [adminName, setAdminName] = useState("Admin");
 
+  // --- State for Dynamic Stats ---
+  const [stats, setStats] = useState({
+    sales: 0,
+    orders: 0,
+    users: 1203, // Placeholder until User API is linked
+    lowStock: 8  // Placeholder until Inventory API is linked
+  });
+  const [pendingOrders, setPendingOrders] = useState(0);
+
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     const name = localStorage.getItem('userName');
     
     if (name) setAdminName(name);
-    setLoading(false);
+
+    // --- Fetch Real Admin Data ---
+    const fetchDashboardData = async () => {
+      try {
+        // FIX 1: Use the ADMIN API to get ALL orders
+        const res = await fetch('/api/admin/orders');
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+            // 1. Calculate Total Sales
+            const totalSales = data.reduce((acc: number, order: any) => acc + parseFloat(order.totalamount), 0);
+            
+            // 2. Count 'Pending' Orders for the Badge (Default status is Pending)
+            const pendingCount = data.filter((o: any) => o.status === 'Pending').length;
+
+            setStats(prev => ({
+                ...prev,
+                sales: totalSales,
+                orders: data.length
+            }));
+            setPendingOrders(pendingCount);
+        }
+      } catch (error) {
+        console.error("Failed to load dashboard stats", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, [router]);
 
   const handleLogout = () => {
@@ -31,7 +69,16 @@ export default function AdminDashboard() {
   // Navigation Items
   const menuItems = [
     { title: "Manage Inventory", desc: "Products, Ready-made & Custom Boxes.", icon: "📦", path: "/admin/inventory" },
-    { title: "Manage Orders", desc: "View and process pending customer orders.", icon: "🚚", path: "/admin/orders", badge: "2 New" },
+    
+    // --- FIX 2: Correct Path for Orders Page ---
+    { 
+        title: "Manage Orders", 
+        desc: "View and process pending customer orders.", 
+        icon: "🚚", 
+        path: "/admin/orders", // <--- FIXED (Was /admin/dashboard/orders)
+        badge: pendingOrders > 0 ? `${pendingOrders} New` : null 
+    },
+    
     { title: "Manage Offers", desc: "Create discount codes, sale banners, and promos.", icon: "🏷️", path: "/admin/manage-offers" },
     { title: "Notifications", desc: "Check system alerts and stock warnings.", icon: "🔔", path: "/admin/notifications", badge: "3" },
     { title: "Sales Reports", desc: "View monthly earnings and analytics.", icon: "📊", path: "/admin/reports" },
@@ -112,27 +159,27 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    {/* --- STATS ROW (Inserted Here) --- */}
+                    {/* --- STATS ROW (UPDATED WITH REAL DATA) --- */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         {/* Total Sales */}
                         <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
                             <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Total Sales</h3>
-                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">LKR 6,000</p>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">LKR {stats.sales.toLocaleString()}</p>
                         </div>
                         {/* Active Orders */}
                         <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
-                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Active Orders</h3>
-                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">45</p>
+                            <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Total Orders</h3>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">{stats.orders}</p>
                         </div>
                         {/* Total Users */}
                         <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
                             <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Total Users</h3>
-                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">1,203</p>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">{stats.users}</p>
                         </div>
                         {/* Low Stock Items */}
                         <div className="bg-white/50 p-4 rounded-2xl border border-white/60 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-transform cursor-default">
                             <h3 className="text-xs font-bold text-[#7B2C62] uppercase tracking-wider text-center">Low Stock Items</h3>
-                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">8</p>
+                            <p className="text-2xl font-bold text-[#4A1D46] mt-1">{stats.lowStock}</p>
                         </div>
                     </div>
 

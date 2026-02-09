@@ -1,101 +1,126 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
 
-export async function GET(req: Request) {
+// Helper: Verify User
+async function getUserId() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
+  if (!token) return null;
   try {
-    const { searchParams } = new URL(req.url);
-    const queryId = searchParams.get('id');
-
-    let sqlQuery = '';
-    let params = [];
-
-    if (queryId) {
-        // CORRECTION: Removed 'u.name' because it doesn't exist in your User table
-        sqlQuery = `
-          SELECT 
-            u.id as userid, 
-            u.email, 
-            c.fullName, 
-            c.address, 
-            c.phoneNumber, 
-            c.dob, 
-            c.gender 
-          FROM user u 
-          LEFT JOIN customer c ON u.id = c.userId 
-          WHERE u.id = ?`;
-        params.push(queryId);
-    } else {
-        // Fallback: Latest User
-        sqlQuery = `
-          SELECT 
-            u.id as userid, 
-            u.email, 
-            c.fullName, 
-            c.address, 
-            c.phoneNumber, 
-            c.dob, 
-            c.gender 
-          FROM user u 
-          LEFT JOIN customer c ON u.id = c.userId 
-          ORDER BY u.id DESC LIMIT 1`;
-    }
-
-    const [rows]: any = await db.query(sqlQuery, params);
-
-    if (rows.length === 0) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const userData = rows[0];
-
-    const profile = {
-        userid: userData.userid,
-        // If fullName exists, use it. If not, use the part of email before '@' as a placeholder
-        name: userData.fullName || userData.email.split('@')[0], 
-        email: userData.email || '',
-        phone: userData.phoneNumber || '',
-        address: userData.address || '',
-        dob: userData.dob ? new Date(userData.dob).toISOString().split('T')[0] : '',
-        gender: userData.gender || ''
-    };
-
-    return NextResponse.json(profile);
-
-  } catch (error) {
-    console.error("Profile Fetch Error:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key');
+    const { payload } = await jwtVerify(token, secret);
+    return payload.id;
+  } catch {
+    return null;
   }
 }
 
-// PUT: Update Profile
-export async function PUT(req: Request) {
+// ------------------------------------------------------------------
+// GET: Fetch Profile
+// ------------------------------------------------------------------
+export async function GET(req: Request) {
   try {
-    const body = await req.json();
-    const { userid, name, email, phone, address, dob, gender } = body;
+    const userId = await getUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // 1. Update User Table (Email only)
-    await db.query('UPDATE user SET email = ? WHERE id = ?', [email, userid]);
+    console.log("Fetching profile for ID:", userId);
 
-    // 2. Check Customer Table
-    const [existing]: any = await db.query('SELECT id FROM customer WHERE userId = ?', [userid]);
+    // FIX 1: User table likely uses 'id', not 'userid'
+    // FIX 2: Customer table uses 'userid' (from your screenshot)
+    // FIX 3: Using 'u.fullName' or 'u.username' (checking both via COALESCE if uncertain, but usually 'username')
+    
+    // We try to select 'u.id' first to ensure table alias is correct.
+    // If your user table has 'username', keep u.username. If it has 'name', change to u.ame.
+    const query = `
+      SELECT 
+        u.email, 
+        c.fullName, 
+        c.phoneNumber, 
+        c.address, 
+        c.dob, 
+        c.gender 
+      FROM user u
+      LEFT JOIN customer c ON u.id = c.userid 
+      WHERE u.id = ?
+    `;
 
-    if (existing.length > 0) {
-        // Update
-        await db.query(
-            'UPDATE customer SET fullName=?, address=?, phoneNumber=?, dob=?, gender=? WHERE userId=?',
-            [name, address, phone, dob, gender, userid]
-        );
-    } else {
-        // Create
-        await db.query(
-            'INSERT INTO customer (userId, fullName, address, phoneNumber, dob, gender) VALUES (?, ?, ?, ?, ?, ?)',
-            [userid, name, address, phone, dob, gender]
-        );
+    const [rows]: any = await db.query(query, [userId]);
+
+    if (rows.length === 0) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Updated successfully" });
-  } catch (error) {
-    console.error("Update Error:", error);
-    return NextResponse.json({ error: "Update failed" }, { status: 500 });
+    const user = rows[0];
+
+    // Map DB columns to Frontend keys
+    const profileData = {
+      email: user.email,
+      // Priority: Customer FullName -> User Username -> Empty
+      name: user.fullName || user.username || '', 
+      phone: user.phoneNumber || '', 
+      address: user.address || '',
+      dob: user.dob || '',
+      gender: user.gender || ''
+    };
+
+    return NextResponse.json(profileData);
+
+  } catch (error: any) {
+    // IMPORTANT: Check your VS Code Terminal for this error message!
+    console.error("PROFILE GET SQL ERROR:", error.message);
+    return NextResponse.json({ error: "Internal Server Error: " + error.message }, { status: 500 });
+  }
+}
+
+// ------------------------------------------------------------------
+// PUT: Update Profile
+// ------------------------------------------------------------------
+export async function PUT(req: Request) {
+  try {
+    const userId = await getUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    
+    // 1. Check existing customer record
+    // Use 'userid' because that is the column in the CUSTOMER table
+    const [existingRows]: any = await db.query('SELECT * FROM customer WHERE userid = ?', [userId]);
+    const current = existingRows[0] || {};
+    
+    // 2. Prepare Data (Merge new with old)
+    const newFullName = body.name ?? current.fullName; 
+    const newPhone = body.phone ?? current.phoneNumber; 
+    const newAddress = body.address ?? current.address;
+    const newDob = body.dob ?? current.dob;
+    const newGender = body.gender ?? current.gender;
+
+    // 3. Update or Insert
+    if (existingRows.length > 0) {
+      await db.query(
+        `UPDATE customer 
+         SET fullName = ?, phoneNumber = ?, address = ?, dob = ?, gender = ? 
+         WHERE userid = ?`,
+        [newFullName, newPhone, newAddress, newDob, newGender, userId]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO customer (userid, fullName, phoneNumber, address, dob, gender) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [userId, newFullName, newPhone, newAddress, newDob, newGender]
+      );
+    }
+
+    // 4. Update User Email (using u.id)
+    if (body.email) {
+       await db.query('UPDATE user SET email = ? WHERE id = ?', [body.email, userId]);
+    }
+
+    return NextResponse.json({ message: "Profile saved successfully" });
+
+  } catch (error: any) {
+    console.error("PROFILE PUT ERROR:", error.message);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

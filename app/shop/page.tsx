@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import CustomerHeader from '@/components/CustomerHeader';
+import { useRouter } from 'next/navigation'; 
 
 const CATEGORIES = [
   { id: 'cat_individual', name: 'Individual Product' },
@@ -10,6 +11,8 @@ const CATEGORIES = [
 ];
 
 export default function ShopPage() {
+  const router = useRouter(); 
+  
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
@@ -30,38 +33,56 @@ export default function ShopPage() {
     show: false, 
     title: '', 
     message: '', 
-    type: 'success' // 'success' or 'error'
+    type: 'success', // 'success' or 'error'
+    redirect: '' // Stores the path to redirect to (e.g., '/login')
   });
 
-  const closeAlert = () => setAlertState({ ...alertState, show: false });
+  // Function to handle the main button click (e.g., "Login Now")
+  const closeAlert = () => {
+    const redirectPath = alertState.redirect;
+    setAlertState({ ...alertState, show: false, redirect: '' });
+    
+    // If a redirect path is set (like for login), go there now
+    if (redirectPath) {
+      router.push(redirectPath);
+    }
+  };
 
-  // --- ADD TO CART HANDLER ---
-  const handleAddToCart = (item: any) => {
-    // Show Elegant Success Dialog
-    setAlertState({
-        show: true,
-        title: 'Added to Cart',
-        message: `${item.name || item.productname} has been added to your cart.`,
-        type: 'success'
-    });
+  // Function to simply dismiss the dialog (The 'X' button)
+  const dismissAlert = () => {
+    setAlertState(prev => ({ ...prev, show: false }));
+  };
+
+  // --- 1. FETCH NEW ARRIVALS ---
+  const fetchNewArrivals = async () => {
+    try {
+      const res = await fetch('/api/new-arrivals');
+      const dataRaw = await res.json();
+
+      if (Array.isArray(dataRaw)) {
+        const last5Products = dataRaw.slice(-5).reverse();
+        setNewArrivals(last5Products.map((item: any) => ({
+          id: item.productid, 
+          name: item.productname, 
+          desc: item.productdescription,
+          price: item.price, 
+          image: item.imageurl 
+        })));
+      } else {
+        setNewArrivals([]);
+      }
+    } catch (err) { 
+      console.error("Fetch error:", err);
+    } finally { 
+      setIsLoadingNew(false);
+    }
   };
 
   useEffect(() => {
-    const fetchNewArrivals = async () => {
-      try {
-        const res = await fetch('/api/new-arrivals');
-        const dataRaw = await res.json();
-        const last5Products = dataRaw.slice(-5).reverse();
-        setNewArrivals(last5Products.map((item: any) => ({
-            id: item.productid, name: item.productname, desc: item.productdescription,
-            price: item.price, image: item.imageurl 
-        })));
-      } catch (err) { console.error(err); } 
-      finally { setIsLoadingNew(false); }
-    };
     fetchNewArrivals();
   }, []);
 
+  // --- 2. FETCH PRODUCTS BY CATEGORY ---
   const fetchProductsByCategory = useCallback(async (catId: string) => {
     setIsLoadingProducts(true);
     try {
@@ -82,6 +103,7 @@ export default function ShopPage() {
 
   useEffect(() => { fetchProductsByCategory(activeCategory); }, [activeCategory, fetchProductsByCategory]);
 
+  // --- 3. FILTERING LOGIC ---
   useEffect(() => {
     let result = [...products];
     if (searchTerm) result = result.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -92,6 +114,74 @@ export default function ShopPage() {
     setFilteredProducts(result);
   }, [searchTerm, sortOption, filterType, products]);
 
+  // --- 4. ADD TO CART HANDLER (CLIENT-SIDE CREDENTIAL CHECK) ---
+  const handleAddToCart = async (item: any) => {
+    // 1. CHECK LOCAL STORAGE CREDENTIALS
+    // We check if 'userId' exists (set during login)
+    const storedUserId = localStorage.getItem('userId');
+    const storedSession = document.cookie.includes("user_session=true");
+
+    // If NO credentials found, block immediately (Client Side)
+    if (!storedUserId && !storedSession) {
+        setAlertState({
+          show: true,
+          title: 'Login Required',
+          message: 'Please login or create an account to add items to your cart.',
+          type: 'error',
+          redirect: '/login' // Set redirect to login page
+        });
+        return; // STOP execution here
+    }
+
+    // 2. PROCEED TO SERVER CALL (Double Check)
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: item.id || item.productid, 
+          type: activeCategory === 'cat_individual' ? 'product' : 'item' 
+        }),
+      });
+
+      // Also catch 401 from server just in case token expired
+      if (res.status === 401) {
+        setAlertState({
+          show: true,
+          title: 'Login Required',
+          message: 'Your session has expired. Please login again.',
+          type: 'error',
+          redirect: '/login'
+        });
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add to cart');
+      }
+
+      // Success Message
+      setAlertState({
+        show: true,
+        title: 'Added to Cart',
+        message: `${item.name || item.productname} has been added to your cart successfully.`,
+        type: 'success',
+        redirect: ''
+      });
+    } catch (error: any) {
+      setAlertState({
+        show: true,
+        title: 'Error',
+        message: error.message || 'Something went wrong.',
+        type: 'error',
+        redirect: ''
+      });
+    }
+  };
+
+  // Slider Logic
   const nextSlide = () => {
     if (slideIndex + itemsPerSlide < newArrivals.length) { setSlideIndex(slideIndex + 1); } 
     else { setSlideIndex(0); }
@@ -102,6 +192,7 @@ export default function ShopPage() {
     else { setSlideIndex(Math.max(0, newArrivals.length - itemsPerSlide)); }
   };
 
+  // Card Component
   const ProductCard = ({ item, isNew = false }: { item: any, isNew?: boolean }) => (
     <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group border border-white/50 flex flex-col h-full relative">
         <div className="h-44 bg-gradient-to-b from-white to-[#fff0f5] relative overflow-hidden flex items-center justify-center">
@@ -115,7 +206,6 @@ export default function ShopPage() {
             <p className="text-[10px] text-gray-500 line-clamp-2 flex-grow italic">{item.desc || item.description || item.productdescription}</p>
             <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#f8bbd0]/30">
                 <span className="text-sm font-bold text-[#ad1457]">LKR {item.price}</span>
-                {/* UPDATED: Added click handler for Dialog */}
                 <button 
                   onClick={() => handleAddToCart(item)}
                   className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm"
@@ -128,7 +218,6 @@ export default function ShopPage() {
   );
 
   return (
-    // UPDATED: Elegant White-Pink Gradient
     <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46]">
       <CustomerHeader /> 
 
@@ -198,11 +287,20 @@ export default function ShopPage() {
         </div>
       </main>
 
-      {/* --- CUSTOM ELEGANT DIALOG BOX (Added Here) --- */}
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up">
+           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up relative">
               
+              {/* --- NEW: CLOSE (X) BUTTON --- */}
+              <button 
+                onClick={dismissAlert} 
+                className="absolute top-5 right-5 text-gray-400 hover:text-[#880e4f] transition-colors p-2 text-xl leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+
               <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
                 {alertState.type === 'success' ? '🛍️' : '⚠️'}
               </div>
@@ -219,7 +317,7 @@ export default function ShopPage() {
                 onClick={closeAlert}
                 className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full"
               >
-                Continue Shopping
+                {alertState.redirect ? 'Login Now' : 'Continue Shopping'}
               </button>
            </div>
         </div>
