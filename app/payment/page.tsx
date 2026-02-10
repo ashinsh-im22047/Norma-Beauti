@@ -8,6 +8,7 @@ export default function PaymentPage() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // New Edit State
   
   // FORM STATE
   const [details, setDetails] = useState({ 
@@ -30,7 +31,6 @@ export default function PaymentPage() {
 
   const closeAlert = () => {
     setAlertState(prev => ({ ...prev, show: false }));
-    // If a redirect path exists (e.g., after success), navigate there
     if (alertState.redirect) {
         router.push(alertState.redirect);
     }
@@ -70,7 +70,6 @@ export default function PaymentPage() {
     const val = e.target.value;
     const numbersOnly = val.replace(/[^0-9]/g, '');
     
-    // Limit to 9 digits
     if (numbersOnly.length <= 9) {
         setDetails({ ...details, phone: `+94${numbersOnly}` });
     }
@@ -93,8 +92,6 @@ export default function PaymentPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // --- STRICT VALIDATION WITH CUSTOM DIALOGS ---
-
     // 1. Validate Name
     if (!details.name.trim()) {
         setAlertState({
@@ -113,7 +110,7 @@ export default function PaymentPage() {
         return;
     }
 
-    // 3. Validate Phone (Must be exactly 9 digits after +94)
+    // 3. Validate Phone
     const phoneDigits = getPhoneDigits();
     if (phoneDigits.length !== 9) {
         setAlertState({
@@ -149,8 +146,10 @@ export default function PaymentPage() {
         });
 
         if (res.ok) {
+            // Updated: API now handles Cart DB cleanup automatically.
+            // We just clear local storage here.
             localStorage.removeItem('checkoutItems');
-            // SUCCESS DIALOG WITH REDIRECT
+            
             setAlertState({
                 show: true, type: 'success', title: 'Order Placed! 🚀', 
                 message: 'Your order has been placed successfully.', 
@@ -187,7 +186,17 @@ export default function PaymentPage() {
                 
                 {/* 1. DELIVERY DETAILS */}
                 <div className="flex-1 space-y-6">
-                    <h3 className="text-xl font-bold text-[#ad1457]">1. Delivery Details</h3>
+                    <div className="flex justify-between items-center border-b pb-2 border-pink-200">
+                        <h3 className="text-xl font-bold text-[#ad1457]">1. Delivery Details</h3>
+                        {/* Edit Button */}
+                        <button 
+                            type="button" 
+                            onClick={() => setIsEditing(!isEditing)}
+                            className="text-sm font-bold text-blue-600 hover:text-blue-800 underline transition"
+                        >
+                            {isEditing ? 'Done' : 'Edit'}
+                        </button>
+                    </div>
                     <p className="text-xs text-gray-500 mb-4">Edit address for this order if needed.</p>
                     
                     <div>
@@ -195,9 +204,14 @@ export default function PaymentPage() {
                         <input 
                             type="text" 
                             value={details.name} 
+                            readOnly={!isEditing}
                             onChange={e => setDetails({...details, name: e.target.value})} 
                             placeholder="Enter your full name"
-                            className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:border-[#880e4f] outline-none" 
+                            className={`w-full p-3 rounded-xl border outline-none font-medium transition-colors ${
+                                isEditing 
+                                ? 'bg-white border-blue-400 text-gray-900 focus:border-blue-500 shadow-sm' 
+                                : 'bg-gray-100 border-transparent text-gray-800 cursor-default'
+                            }`} 
                         />
                     </div>
 
@@ -206,27 +220,38 @@ export default function PaymentPage() {
                         <input 
                             type="text" 
                             value={details.address} 
+                            readOnly={!isEditing}
                             onChange={e => setDetails({...details, address: e.target.value})} 
                             placeholder="Enter your address"
-                            className="w-full p-3 rounded-xl bg-white border border-gray-200 focus:border-[#880e4f] outline-none" 
+                            className={`w-full p-3 rounded-xl border outline-none font-medium transition-colors ${
+                                isEditing 
+                                ? 'bg-white border-blue-400 text-gray-900 focus:border-blue-500 shadow-sm' 
+                                : 'bg-gray-100 border-transparent text-gray-800 cursor-default'
+                            }`} 
                         />
                     </div>
 
-                    {/* PHONE INPUT WITH FIXED +94 */}
                     <div>
                         <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Phone</label>
-                        <div className="flex items-center w-full p-3 rounded-xl bg-white border border-gray-200 focus-within:border-[#880e4f]">
+                        <div className={`flex items-center w-full p-3 rounded-xl border transition-colors ${
+                                isEditing 
+                                ? 'bg-white border-blue-400 focus-within:border-blue-500 shadow-sm' 
+                                : 'bg-gray-100 border-transparent'
+                            }`}>
                             <span className="text-gray-500 font-bold mr-2 select-none">+94</span>
                             <input 
                                 type="text" 
                                 value={getPhoneDigits()} 
+                                readOnly={!isEditing}
                                 onChange={handlePhoneChange} 
                                 placeholder="7XXXXXXXX"
                                 maxLength={9}
-                                className="w-full outline-none bg-transparent" 
+                                className={`w-full outline-none bg-transparent font-medium ${
+                                    isEditing ? 'text-gray-900' : 'text-gray-800 cursor-default'
+                                }`} 
                             />
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 9 digits.</p>
+                        {isEditing && <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 9 digits.</p>}
                     </div>
                 </div>
 
@@ -234,11 +259,11 @@ export default function PaymentPage() {
                 <div className="flex-1 space-y-6">
                     <h3 className="text-xl font-bold text-[#ad1457]">2. Payment Method</h3>
                     <div className="flex gap-4">
-                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'COD' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500'}`}>
+                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'COD' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
                             <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('COD')} />
                             Cash On Delivery
                         </label>
-                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'Slip' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500'}`}>
+                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'Slip' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
                             <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('Slip')} />
                             Upload Slip
                         </label>
@@ -269,19 +294,11 @@ export default function PaymentPage() {
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
-              
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'success' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
                 {alertState.type === 'success' ? '✅' : '⚠️'}
               </div>
-
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">
-                {alertState.title}
-              </h3>
-              
-              <p className="text-[#7B2C62] mb-8 font-medium">
-                {alertState.message}
-              </p>
-
+              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
+              <p className="text-[#7B2C62] mb-8 font-medium">{alertState.message}</p>
               <button 
                 onClick={closeAlert}
                 className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#880e4f] to-[#d81b60]' : 'bg-gray-800'}`}
@@ -291,7 +308,6 @@ export default function PaymentPage() {
            </div>
         </div>
       )}
-
     </div>
   );
 }
