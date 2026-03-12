@@ -12,9 +12,9 @@ export async function GET(req: Request) {
     console.log(`🔍 Fetching items for Order ID: ${orderId}`);
 
     // --- 1. Fetch PRODUCTS ---
-    // FIX: Joined on p.productid (not 'p.id') and aliased imageurl as image
     const productsQuery = `
       SELECT 
+        op.productid, 
         op.productid as id, 
         op.quantity, 
         op.amount as price, 
@@ -26,16 +26,14 @@ export async function GET(req: Request) {
     `;
     
     const productsResult: any = await db.query(productsQuery, [orderId]);
-    
-    // Safety check for different DB driver response formats
     const productRows = (Array.isArray(productsResult) && Array.isArray(productsResult[0]))
         ? productsResult[0] 
         : productsResult;
 
     // --- 2. Fetch ITEMS (Custom Boxes) ---
-    // FIX: Joined on i.itemid (not 'i.id') and aliased imageurl as image
     const itemsQuery = `
       SELECT 
+        oi.itemid,
         oi.itemid as id, 
         oi.quantity, 
         oi.amount as price, 
@@ -47,7 +45,6 @@ export async function GET(req: Request) {
     `;
 
     const itemsResult: any = await db.query(itemsQuery, [orderId]);
-    
     const itemRows = (Array.isArray(itemsResult) && Array.isArray(itemsResult[0]))
         ? itemsResult[0] 
         : itemsResult;

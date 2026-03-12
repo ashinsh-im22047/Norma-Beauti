@@ -89,7 +89,15 @@ function ProductListContent() {
 
   const getLists = () => {
     let all = [...items];
-    if (searchTerm) all = all.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // --- UPDATED: Search by Name OR ID ---
+    if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        all = all.filter(i => 
+            (i.name && i.name.toLowerCase().includes(lowerSearch)) || 
+            (i.id && i.id.toLowerCase().includes(lowerSearch))
+        );
+    }
 
     if (sortOption === 'price-low') all.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     if (sortOption === 'price-high') all.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
@@ -158,7 +166,6 @@ function ProductListContent() {
   };
 
   const handleDelete = (id: string) => {
-    // Show Confirmation Dialog
     setAlertState({
         show: true,
         title: "Confirm Delete",
@@ -181,7 +188,7 @@ function ProductListContent() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- REUSABLE CARD (Dynamic z-index) ---
+  // --- REUSABLE CARD ---
   const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => (
     <div key={item.id} className={`
         bg-[#5D2E46]/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/10 
@@ -199,6 +206,8 @@ function ProductListContent() {
             </div>
             <div className="flex flex-col min-w-0">
                <h3 className="font-bold text-white truncate text-lg tracking-wide">{item.name}</h3>
+               {/* --- UPDATED: Display ID --- */}
+               <p className="text-[10px] text-[#D883B7] font-mono tracking-wider mb-1">ID: {item.id}</p>
                <p className="text-xs text-gray-300 truncate max-w-md opacity-80">{item.desc || "No description"}</p>
             </div>
         </div>
@@ -255,8 +264,9 @@ function ProductListContent() {
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-[#4A1D46]">🔍</span>
+                        {/* --- UPDATED: Search Placeholder --- */}
                         <input 
-                          type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                          type="text" placeholder="Search Name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10 pr-4 py-2 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] w-48 shadow-inner placeholder-[#4A1D46]/50"
                         />
                     </div>
@@ -296,13 +306,14 @@ function ProductListContent() {
                 </div>
             ) : (
                 <div className="flex flex-col gap-4">
+                    {standard.length === 0 && <p className="text-[#7B2C62] italic p-6 text-center opacity-70 bg-white/40 rounded-xl">No items found.</p>}
                     {standard.map(item => <ProductCard key={item.id} item={item} />)}
                 </div>
             )}
         </div>
       </main>
 
-      {/* MODAL (Elegant Glassmorphism) */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={resetForm}>
           <div className="bg-[#2E1029]/90 backdrop-blur-xl w-full max-w-lg rounded-[2rem] p-8 shadow-2xl relative border border-white/30 text-white" onClick={e => e.stopPropagation()}>
@@ -339,7 +350,7 @@ function ProductListContent() {
         </div>
       )}
 
-      {/* --- CUSTOM ELEGANT DIALOG BOX (Replaces Alerts/Confirms) --- */}
+      {/* ALERT DIALOG */}
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-[#2E1029]/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/30 text-white transform transition-all scale-100">
