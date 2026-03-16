@@ -111,12 +111,16 @@ export default function ShopPage() {
     }
 
     try {
+      // --- THE FIX IS HERE: Automatically detect product vs item based on ID! ---
+      const itemId = item.id || item.productid || item.itemid;
+      const itemType = item.type || (String(itemId).includes('prod') ? 'product' : 'item');
+
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          id: item.id || item.productid || item.itemid, 
-          type: (activeCategory === 'cat_individual' || item.productid) ? 'product' : 'item',
+          id: itemId, 
+          type: itemType,
           price: item.price 
         }),
       });
@@ -248,7 +252,7 @@ export default function ShopPage() {
 
       <main className="container mx-auto px-6 py-10 relative z-20">
         
-        {/* --- EXCLUSIVE OFFERS SLIDER (Pushed New Arrivals Down by using mb-20) --- */}
+        {/* --- EXCLUSIVE OFFERS SLIDER --- */}
         {!searchTerm && activeCategory === 'all' && activeOffers.length > 0 && (
             <div className="mb-20 bg-gradient-to-r from-[#ff7e5f] via-[#e91e63] to-[#880e4f] p-8 rounded-[2.5rem] shadow-2xl border border-white/20 relative animate-fade-in-up">
                 <div className="absolute top-0 right-10 bg-yellow-400 text-black px-4 py-1 rounded-b-xl text-xs font-bold shadow-md tracking-widest uppercase">Limited Time</div>

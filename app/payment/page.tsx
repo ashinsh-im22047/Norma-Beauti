@@ -8,13 +8,13 @@ export default function PaymentPage() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // New Edit State
+  const [isEditing, setIsEditing] = useState(false); 
   
   // FORM STATE
   const [details, setDetails] = useState({ 
     name: '', 
     address: '', 
-    phone: '' // Stores full format: +947XXXXXXXX
+    phone: '' 
   });
   
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Slip'>('COD');
@@ -23,10 +23,10 @@ export default function PaymentPage() {
   // --- CUSTOM ALERT STATE ---
   const [alertState, setAlertState] = useState({ 
     show: false, 
-    type: 'success', // 'success' or 'error'
+    type: 'success',
     title: '', 
     message: '',
-    redirect: '' // Optional redirection path
+    redirect: ''
   });
 
   const closeAlert = () => {
@@ -37,7 +37,6 @@ export default function PaymentPage() {
   };
 
   useEffect(() => {
-    // 1. Load Cart Items
     const storedItems = localStorage.getItem('checkoutItems');
     if (storedItems) {
         setItems(JSON.parse(storedItems));
@@ -45,7 +44,6 @@ export default function PaymentPage() {
         router.push('/cart');
     }
 
-    // 2. FETCH PROFILE DATA (To Pre-fill Form)
     const fetchProfileData = async () => {
       try {
         const res = await fetch('/api/profile');
@@ -65,7 +63,6 @@ export default function PaymentPage() {
     fetchProfileData();
   }, [router]);
 
-  // --- PHONE INPUT HANDLER ---
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const numbersOnly = val.replace(/[^0-9]/g, '');
@@ -92,7 +89,6 @@ export default function PaymentPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Validate Name
     if (!details.name.trim()) {
         setAlertState({
             show: true, type: 'error', title: 'Missing Information', 
@@ -100,8 +96,6 @@ export default function PaymentPage() {
         });
         return;
     }
-
-    // 2. Validate Address
     if (!details.address.trim()) {
         setAlertState({
             show: true, type: 'error', title: 'Missing Information', 
@@ -109,8 +103,6 @@ export default function PaymentPage() {
         });
         return;
     }
-
-    // 3. Validate Phone
     const phoneDigits = getPhoneDigits();
     if (phoneDigits.length !== 9) {
         setAlertState({
@@ -119,8 +111,6 @@ export default function PaymentPage() {
         });
         return;
     }
-
-    // 4. Validate Slip
     if (paymentMethod === 'Slip' && !slipFile) {
         setAlertState({
             show: true, type: 'error', title: 'Payment Slip Required', 
@@ -146,13 +136,10 @@ export default function PaymentPage() {
         });
 
         if (res.ok) {
-            // Updated: API now handles Cart DB cleanup automatically.
-            // We just clear local storage here.
             localStorage.removeItem('checkoutItems');
-            
             setAlertState({
-                show: true, type: 'success', title: 'Order Placed! 🚀', 
-                message: 'Your order has been placed successfully.', 
+                show: true, type: 'success', title: 'Order Placed! 🎉', 
+                message: 'Your beautiful order has been placed successfully.', 
                 redirect: '/profile/my-orders'
             });
         } else {
@@ -163,7 +150,6 @@ export default function PaymentPage() {
             });
         }
     } catch (error) { 
-        console.error(error);
         setAlertState({
             show: true, type: 'error', title: 'System Error', 
             message: 'Something went wrong. Please check your connection.', redirect: ''
@@ -176,69 +162,82 @@ export default function PaymentPage() {
   const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
 
   return (
-    <div className="min-h-screen bg-[#fff0f5]">
+    <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46] pb-20">
       <CustomerHeader />
-      <main className="container mx-auto px-6 py-12 flex justify-center">
-        <div className="w-full max-w-4xl bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-xl border border-white/60">
-             <h2 className="text-3xl font-serif font-bold text-[#880e4f] mb-8 text-center">Checkout</h2>
-             
-             <form onSubmit={handlePlaceOrder} className="flex flex-col md:flex-row gap-10">
+      <main className="container mx-auto px-6 py-8 max-w-7xl">
+        
+        {/* --- ELEGANT HERO SECTION --- */}
+        <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
+            
+            <div className="relative z-10 text-center md:text-left">
+                <div className="inline-block bg-white/10 px-5 py-1.5 rounded-full border border-white/20 text-xs font-bold tracking-widest uppercase mb-4 text-[#F3E5F5] shadow-inner">
+                    Final Step
+                </div>
+                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wide mb-3">Secure Checkout</h1>
+                <p className="text-[#D883B7] font-medium text-lg max-w-md mx-auto md:mx-0">
+                    Confirm your details and complete your purchase.
+                </p>
+            </div>
+            
+            <div className="relative z-10 flex items-center justify-center shrink-0">
+                <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-4xl shadow-inner border border-white/20 relative group hover:scale-105 transition-transform duration-500">
+                    <span className="animate-pulse drop-shadow-[0_0_15px_rgba(216,131,183,0.6)]">💳</span>
+                </div>
+            </div>
+        </div>
+
+        <div className="w-full max-w-4xl mx-auto bg-white/70 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-white/60">
+             <form onSubmit={handlePlaceOrder} className="flex flex-col md:flex-row gap-12">
                 
                 {/* 1. DELIVERY DETAILS */}
                 <div className="flex-1 space-y-6">
-                    <div className="flex justify-between items-center border-b pb-2 border-pink-200">
-                        <h3 className="text-xl font-bold text-[#ad1457]">1. Delivery Details</h3>
-                        {/* Edit Button */}
+                    <div className="flex justify-between items-center border-b pb-4 border-pink-100">
+                        <h3 className="text-2xl font-serif font-bold text-[#4A1D46]">1. Delivery</h3>
                         <button 
                             type="button" 
                             onClick={() => setIsEditing(!isEditing)}
-                            className="text-sm font-bold text-blue-600 hover:text-blue-800 underline transition"
+                            className="text-xs font-bold text-[#880e4f] bg-pink-50 hover:bg-[#880e4f] hover:text-white px-4 py-2 rounded-full transition-all border border-pink-200 hover:border-transparent"
                         >
-                            {isEditing ? 'Done' : 'Edit'}
+                            {isEditing ? 'Done' : '✎ Edit'}
                         </button>
                     </div>
-                    <p className="text-xs text-gray-500 mb-4">Edit address for this order if needed.</p>
                     
                     <div>
-                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Name</label>
+                        <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Name</label>
                         <input 
                             type="text" 
                             value={details.name} 
                             readOnly={!isEditing}
                             onChange={e => setDetails({...details, name: e.target.value})} 
                             placeholder="Enter your full name"
-                            className={`w-full p-3 rounded-xl border outline-none font-medium transition-colors ${
-                                isEditing 
-                                ? 'bg-white border-blue-400 text-gray-900 focus:border-blue-500 shadow-sm' 
-                                : 'bg-gray-100 border-transparent text-gray-800 cursor-default'
+                            className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${
+                                isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'
                             }`} 
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Address</label>
+                        <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Address</label>
                         <input 
                             type="text" 
                             value={details.address} 
                             readOnly={!isEditing}
                             onChange={e => setDetails({...details, address: e.target.value})} 
                             placeholder="Enter your address"
-                            className={`w-full p-3 rounded-xl border outline-none font-medium transition-colors ${
-                                isEditing 
-                                ? 'bg-white border-blue-400 text-gray-900 focus:border-blue-500 shadow-sm' 
-                                : 'bg-gray-100 border-transparent text-gray-800 cursor-default'
+                            className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${
+                                isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'
                             }`} 
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-[#ad1457] uppercase mb-1">Phone</label>
-                        <div className={`flex items-center w-full p-3 rounded-xl border transition-colors ${
-                                isEditing 
-                                ? 'bg-white border-blue-400 focus-within:border-blue-500 shadow-sm' 
-                                : 'bg-gray-100 border-transparent'
+                        <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Phone</label>
+                        <div className={`flex items-center w-full p-3.5 rounded-2xl border transition-colors ${
+                                isEditing ? 'bg-white border-pink-300 focus-within:ring-1 focus-within:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent'
                             }`}>
-                            <span className="text-gray-500 font-bold mr-2 select-none">+94</span>
+                            <span className="text-gray-400 font-bold mr-2 select-none">+94</span>
                             <input 
                                 type="text" 
                                 value={getPhoneDigits()} 
@@ -246,43 +245,50 @@ export default function PaymentPage() {
                                 onChange={handlePhoneChange} 
                                 placeholder="7XXXXXXXX"
                                 maxLength={9}
-                                className={`w-full outline-none bg-transparent font-medium ${
-                                    isEditing ? 'text-gray-900' : 'text-gray-800 cursor-default'
-                                }`} 
+                                className={`w-full outline-none bg-transparent font-medium ${isEditing ? 'text-[#4A1D46]' : 'text-gray-500 cursor-default'}`} 
                             />
                         </div>
-                        {isEditing && <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 9 digits.</p>}
                     </div>
                 </div>
 
                 {/* 2. PAYMENT METHOD */}
-                <div className="flex-1 space-y-6">
-                    <h3 className="text-xl font-bold text-[#ad1457]">2. Payment Method</h3>
-                    <div className="flex gap-4">
-                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'COD' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+                <div className="flex-1 space-y-6 flex flex-col">
+                    <div className="border-b pb-4 border-pink-100">
+                        <h3 className="text-2xl font-serif font-bold text-[#4A1D46]">2. Payment</h3>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                        <label className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-3 font-bold transition-all ${paymentMethod === 'COD' ? 'bg-white border-[#9B5DE5] text-[#4A1D46] shadow-md' : 'bg-white/50 border-white text-gray-500 hover:bg-white'}`}>
                             <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('COD')} />
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'COD' ? 'border-[#9B5DE5]' : 'border-gray-300'}`}>
+                                {paymentMethod === 'COD' && <div className="w-2.5 h-2.5 rounded-full bg-[#9B5DE5]"></div>}
+                            </div>
                             Cash On Delivery
                         </label>
-                        <label className={`flex-1 p-4 rounded-xl border cursor-pointer text-center font-bold transition ${paymentMethod === 'Slip' ? 'bg-[#880e4f] text-white border-[#880e4f]' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
+
+                        <label className={`p-4 rounded-2xl border-2 cursor-pointer flex items-center gap-3 font-bold transition-all ${paymentMethod === 'Slip' ? 'bg-white border-[#9B5DE5] text-[#4A1D46] shadow-md' : 'bg-white/50 border-white text-gray-500 hover:bg-white'}`}>
                             <input type="radio" name="pay" className="hidden" onClick={() => setPaymentMethod('Slip')} />
-                            Upload Slip
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'Slip' ? 'border-[#9B5DE5]' : 'border-gray-300'}`}>
+                                {paymentMethod === 'Slip' && <div className="w-2.5 h-2.5 rounded-full bg-[#9B5DE5]"></div>}
+                            </div>
+                            Bank Transfer Slip
                         </label>
                     </div>
 
                     {paymentMethod === 'Slip' && (
-                        <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-center">
-                            <p className="text-sm text-gray-500 mb-2">Upload Bank Transfer Slip</p>
-                            <input type="file" accept="image/*" onChange={handleFileChange} />
+                        <div className="p-6 bg-white/50 rounded-2xl border border-dashed border-[#D883B7] text-center animate-fade-in">
+                            <p className="text-xs font-bold text-[#ad1457] uppercase tracking-widest mb-3">Upload Transfer Slip</p>
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-pink-50 file:text-[#880e4f] hover:file:bg-pink-100 cursor-pointer" />
                         </div>
                     )}
 
-                    <div className="pt-6 border-t mt-4">
-                        <div className="flex justify-between text-xl font-bold text-[#880e4f] mb-4">
-                            <span>Total</span>
-                            <span>LKR {total.toFixed(2)}</span>
+                    <div className="mt-auto pt-6 border-t border-pink-100">
+                        <div className="flex justify-between items-center text-xl font-bold text-[#4A1D46] mb-6 bg-[#F3E5F5] p-5 rounded-2xl">
+                            <span className="uppercase tracking-widest text-sm">Total</span>
+                            <span className="text-2xl text-[#880e4f]">LKR {total.toLocaleString()}</span>
                         </div>
-                        <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-[#880e4f] to-[#d81b60] text-white rounded-xl font-bold shadow-lg hover:scale-[1.02] transition-all disabled:opacity-70">
-                            {loading ? "Placing Order..." : "Place Order"}
+                        <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:scale-[1.02] hover:shadow-xl transition-all disabled:opacity-70 border border-white/20">
+                            {loading ? "Processing..." : "Place Order Securely"}
                         </button>
                     </div>
                 </div>
@@ -294,16 +300,16 @@ export default function PaymentPage() {
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'success' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
-                {alertState.type === 'success' ? '✅' : '⚠️'}
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'success' ? 'bg-green-50 border-green-200 text-green-500' : 'bg-[#FFF9C4] border-[#FFF59D] text-yellow-600'}`}>
+                {alertState.type === 'success' ? '✨' : '⚠️'}
               </div>
               <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium">{alertState.message}</p>
+              <p className="text-[#7B2C62] mb-8 font-medium text-sm">{alertState.message}</p>
               <button 
                 onClick={closeAlert}
-                className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#880e4f] to-[#d81b60]' : 'bg-gray-800'}`}
+                className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full border border-white/20 ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5]' : 'bg-gray-800'}`}
               >
-                {alertState.type === 'success' ? 'Okay' : 'Close'}
+                {alertState.type === 'success' ? 'Continue' : 'Close'}
               </button>
            </div>
         </div>

@@ -35,14 +35,12 @@ export async function GET(req: Request) {
     const userId = await getUserId();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // 1. Get Customer ID (Schema: customer table uses 'id' as PK, 'userId' as FK)
     const [custRows]: any = await db.query('SELECT id FROM customer WHERE userId = ?', [userId]);
     
     if (custRows.length === 0) return NextResponse.json([]);
     
-    const customerId = custRows[0].id; // Corrected: Uses 'id' from customer table
+    const customerId = custRows[0].id; 
 
-    // 2. Fetch Orders
     const [orders]: any = await db.query(
         `SELECT * FROM \`order\` WHERE customerid = ? ORDER BY orderdate DESC`, 
         [customerId]
@@ -55,7 +53,7 @@ export async function GET(req: Request) {
   }
 }
 
-// --- POST: Place Order & Clear Cart ---
+// --- POST: Place Order & Clear Cart & Deduct Stock ---
 export async function POST(req: Request) {
   try {
     const userId = await getUserId();
@@ -64,54 +62,40 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { items, total, method, slip, details } = body;
 
-    // 1. Get Customer ID & Cart ID
-    // Schema Check: 
-    // - Customer table uses 'id' for primary key and 'userId' for foreign key.
-    // - Cart table uses 'cartid' for primary key and 'customerid' (not userid directly based on your screenshot, but let's assume it links via customerid or userid. Standard logic is usually userid. Based on your previous code it was userid. If cart uses customerid, we need to fetch customer first).
-    
-    // Fetch Customer
     const [custRows]: any = await db.query('SELECT id FROM customer WHERE userId = ?', [userId]);
     if (custRows.length === 0) {
         return NextResponse.json({ error: "Customer profile not found." }, { status: 400 });
     }
-    const customerId = custRows[0].id; // Correct: 'id' is PK of customer
+    const customerId = custRows[0].id;
 
-    // Fetch Cart (Based on screenshot, cart has 'customerid', so we query by that)
     const [cartRows]: any = await db.query('SELECT cartid FROM cart WHERE customerid = ?', [customerId]);
-    const cartId = cartRows.length > 0 ? cartRows[0].cartid : null; // Correct: 'cartid' is PK of cart
+    const cartId = cartRows.length > 0 ? cartRows[0].cartid : null;
 
-    // 2. Generate Order ID
     const newOrderId = await generateUniqueOrderId();
 
-    // 3. Insert Order 
+    // 1. Insert Order 
     await db.query(
       `INSERT INTO \`order\` (orderid, customerid, totalamount, paymentmethod, paymentslip, shipping_name, shipping_address, shipping_phone, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`, 
       [newOrderId, customerId, total, method, slip || null, details.name, details.address, details.phone]
     );
 
-    // 4. Insert Items & Remove from Cart
+    // 2. Insert Items, Deduct Stock, Remove from Cart
     for (const item of items) {
       if (item.type === 'product') {
-        // A. Insert into Order
-        await db.query(
-            'INSERT INTO orderedproducts (orderid, productid, quantity, amount) VALUES (?, ?, ?, ?)', 
-            [newOrderId, item.id, item.quantity, item.price] 
-        );
-        // B. Remove from CartProducts (Uses cartid)
-        if (cartId) {
-            await db.query('DELETE FROM cartproducts WHERE cartid = ? AND productid = ?', [cartId, item.id]);
-        }
+        await db.query('INSERT INTO orderedproducts (orderid, productid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, item.id, item.quantity, item.price]);
+        
+        // --- NEW: Deduct from product inventory ---
+        await db.query('UPDATE product SET availablequantity = availablequantity - ? WHERE productid = ?', [item.quantity, item.id]);
+        
+        if (cartId) await db.query('DELETE FROM cartproducts WHERE cartid = ? AND productid = ?', [cartId, item.id]);
       } else {
-        // A. Insert into Order
-        await db.query(
-            'INSERT INTO ordereditems (orderid, itemid, quantity, amount) VALUES (?, ?, ?, ?)', 
-            [newOrderId, item.id, item.quantity, item.price] 
-        );
-        // B. Remove from CartItems (Uses cartid)
-        if (cartId) {
-            await db.query('DELETE FROM cartitems WHERE cartid = ? AND itemid = ?', [cartId, item.id]);
-        }
+        await db.query('INSERT INTO ordereditems (orderid, itemid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, item.id, item.quantity, item.price]);
+        
+        // --- NEW: Deduct from item inventory ---
+        await db.query('UPDATE item SET itemquantity = itemquantity - ? WHERE itemid = ?', [item.quantity, item.id]);
+        
+        if (cartId) await db.query('DELETE FROM cartitems WHERE cartid = ? AND itemid = ?', [cartId, item.id]);
       }
     }
 
@@ -123,9 +107,7 @@ export async function POST(req: Request) {
   }
 }
 
-// ... (Existing Imports and Code) ...
-
-// --- DELETE: Cancel or Delete Order ---
+// --- DELETE: Cancel or Delete Order & Refund Stock ---
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const orderId = searchParams.get('orderId');
@@ -139,17 +121,30 @@ export async function DELETE(req: Request) {
     if (order.length === 0) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     if (action === 'delete') {
-        // Hard Delete (Remove from history)
-        // Note: You might need to delete related items in orderedproducts/ordereditems first if you don't have CASCADE delete set up in your DB.
         await db.query('DELETE FROM orderedproducts WHERE orderid = ?', [orderId]);
         await db.query('DELETE FROM ordereditems WHERE orderid = ?', [orderId]);
         await db.query('DELETE FROM `order` WHERE orderid = ?', [orderId]);
         return NextResponse.json({ message: "Order deleted from history" });
     } else {
-        // Soft Cancel (Update Status)
         if (order[0].status !== 'Pending') {
             return NextResponse.json({ error: "Cannot cancel processed order." }, { status: 403 });
         }
+        
+        // --- NEW: If user cancels a pending order, refund the stock! ---
+        
+        // Refund Products
+        const [products]: any = await db.query('SELECT productid, quantity FROM orderedproducts WHERE orderid = ?', [orderId]);
+        for (const p of products) {
+            await db.query('UPDATE product SET availablequantity = availablequantity + ? WHERE productid = ?', [p.quantity, p.productid]);
+        }
+
+        // Refund Items (Gift Boxes)
+        const [items]: any = await db.query('SELECT itemid, quantity FROM ordereditems WHERE orderid = ?', [orderId]);
+        for (const i of items) {
+            await db.query('UPDATE item SET itemquantity = itemquantity + ? WHERE itemid = ?', [i.quantity, i.itemid]);
+        }
+
+        // Finally, update status to Cancelled
         await db.query('UPDATE `order` SET status = "Cancelled" WHERE orderid = ?', [orderId]);
         return NextResponse.json({ message: "Order cancelled successfully" });
     }

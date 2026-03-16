@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 function ProductListContent() {
@@ -9,6 +9,7 @@ function ProductListContent() {
   
   // Context
   const categoryId = searchParams.get('category') || '';
+  const highlightId = searchParams.get('highlight'); 
   const isReadyMade = categoryId.includes('ready');
   const isCustomBox = categoryId.includes('custom'); 
   
@@ -26,15 +27,18 @@ function ProductListContent() {
   const [sortOption, setSortOption] = useState('newest');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // Modal State
+  // Modal State (--- UPDATED: Added minStock defaulting to '5' ---)
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentItemId, setCurrentItemId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', price: '', quantity: '', description: '', image: '' });
+  const [formData, setFormData] = useState({ name: '', price: '', quantity: '', minStock: '5', description: '', image: '' });
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
   // Loading State for Save Button
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Refs for scrolling
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   // --- CUSTOM ALERT STATE ---
   const [alertState, setAlertState] = useState<{
@@ -65,6 +69,14 @@ function ProductListContent() {
     return () => window.removeEventListener('click', closeMenu);
   }, [categoryId]);
 
+  useEffect(() => {
+    if (!isLoading && highlightId && highlightRef.current) {
+        setTimeout(() => {
+            highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300); 
+    }
+  }, [isLoading, highlightId, items]);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -90,7 +102,6 @@ function ProductListContent() {
   const getLists = () => {
     let all = [...items];
     
-    // --- UPDATED: Search by Name OR ID ---
     if (searchTerm) {
         const lowerSearch = searchTerm.toLowerCase();
         all = all.filter(i => 
@@ -136,8 +147,10 @@ function ProductListContent() {
             const uploadJson = await uploadRes.json();
             finalImageUrl = uploadJson.url; 
         }
+        
+        // --- UPDATED: Passing minStock to payload ---
         const payload = {
-            name: formData.name, price: formData.price, quantity: formData.quantity,
+            name: formData.name, price: formData.price, quantity: formData.quantity, minStock: formData.minStock,
             description: formData.description, image: finalImageUrl || ''
         };
         let res;
@@ -179,8 +192,10 @@ function ProductListContent() {
     });
   };
   
-  const resetForm = () => { setShowModal(false); setIsEditing(false); setFileToUpload(null); setFormData({ name: '', price: '', quantity: '', description: '', image: '' }); };
-  const openEditModal = (item: any) => { setIsEditing(true); setCurrentItemId(item.id); setFormData({ name: item.name, price: item.price, quantity: item.quantity, description: item.desc, image: item.image }); setShowModal(true); setActiveMenuId(null); };
+  // --- UPDATED: resetForm & openEditModal to include minStock ---
+  const resetForm = () => { setShowModal(false); setIsEditing(false); setFileToUpload(null); setFormData({ name: '', price: '', quantity: '', minStock: '5', description: '', image: '' }); };
+  const openEditModal = (item: any) => { setIsEditing(true); setCurrentItemId(item.id); setFormData({ name: item.name, price: item.price, quantity: item.quantity, minStock: item.minStock?.toString() || '5', description: item.desc, image: item.image }); setShowModal(true); setActiveMenuId(null); };
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setFileToUpload(e.target.files[0]); setFormData({ ...formData, image: e.target.files[0].name }); } };
 
   const toggleMenu = (e: React.MouseEvent, id: string) => {
@@ -188,14 +203,29 @@ function ProductListContent() {
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
-  // --- REUSABLE CARD ---
-  const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => (
-    <div key={item.id} className={`
-        bg-[#5D2E46]/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white/10 
-        flex items-center justify-between relative hover:shadow-2xl hover:scale-[1.01] transition-all duration-300
-        ${isPending ? 'border-yellow-400/50 bg-[#5D2E46]/95' : ''}
-        ${activeMenuId === item.id ? 'z-50' : 'z-0'} 
-    `}>
+  const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => {
+    const isHighlighted = item.id === highlightId;
+    
+    return (
+      <div 
+        key={item.id} 
+        ref={isHighlighted ? highlightRef : null}
+        className={`
+            backdrop-blur-md p-4 rounded-2xl flex items-center justify-between relative transition-all duration-700
+            ${isPending ? 'border-yellow-400/50 bg-[#5D2E46]/95' : 'bg-[#5D2E46]/90'}
+            ${activeMenuId === item.id ? 'z-50' : 'z-0'}
+            ${isHighlighted 
+                ? 'ring-4 ring-inset ring-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)] scale-[1.02] border-red-500' 
+                : 'border-white/10 hover:shadow-2xl hover:scale-[1.01]'
+            } 
+        `}
+      >
+        {isHighlighted && (
+            <div className="absolute -top-3 -right-2 bg-red-600 text-white text-[10px] font-bold px-4 py-1 rounded-full shadow-lg animate-pulse uppercase tracking-widest z-10">
+                Low Stock Alert
+            </div>
+        )}
+
         <div className="flex items-center gap-5 flex-1 overflow-hidden">
             <div className="h-16 w-16 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/20 overflow-hidden shadow-inner">
                {item.image && item.image.startsWith('http') ? (
@@ -206,7 +236,6 @@ function ProductListContent() {
             </div>
             <div className="flex flex-col min-w-0">
                <h3 className="font-bold text-white truncate text-lg tracking-wide">{item.name}</h3>
-               {/* --- UPDATED: Display ID --- */}
                <p className="text-[10px] text-[#D883B7] font-mono tracking-wider mb-1">ID: {item.id}</p>
                <p className="text-xs text-gray-300 truncate max-w-md opacity-80">{item.desc || "No description"}</p>
             </div>
@@ -219,7 +248,7 @@ function ProductListContent() {
             </div>
             <div className="text-right hidden sm:block w-16">
                 <p className="text-[10px] text-[#D883B7] font-bold uppercase tracking-wider opacity-90">Stock</p>
-                <span className={`font-bold text-lg ${item.quantity < 5 ? 'text-red-300' : 'text-green-300'}`}>
+                <span className={`font-bold text-lg ${item.quantity <= (item.minStock || 5) ? 'text-red-400 animate-pulse' : 'text-green-300'}`}>
                     {item.quantity}
                 </span>
             </div>
@@ -241,8 +270,9 @@ function ProductListContent() {
                </div>
             )}
         </div>
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
@@ -264,7 +294,6 @@ function ProductListContent() {
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-[#4A1D46]">🔍</span>
-                        {/* --- UPDATED: Search Placeholder --- */}
                         <input 
                           type="text" placeholder="Search Name or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10 pr-4 py-2 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] w-48 shadow-inner placeholder-[#4A1D46]/50"
@@ -320,16 +349,23 @@ function ProductListContent() {
             <h2 className="text-2xl font-serif font-bold text-white mb-6 text-center tracking-wide">Product Details</h2>
             <div className="flex flex-col gap-5">
                <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white placeholder-white/30"/></div>
-               <div className="flex gap-4">
-                   <div className="w-1/2">
+               
+               {/* --- UPDATED: 3-Column Layout for Price, Qty, and Min Alert --- */}
+               <div className="flex gap-3">
+                   <div className="w-1/3">
                        <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Price</label>
-                       <input type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/>
+                       <input type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-white/10 rounded-full px-4 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white text-center"/>
                    </div>
-                   <div className="w-1/2">
+                   <div className="w-1/3">
                        <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Qty</label>
-                       <input type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/>
+                       <input type="number" min="0" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className="w-full bg-white/10 rounded-full px-4 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white text-center"/>
+                   </div>
+                   <div className="w-1/3">
+                       <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label>
+                       <input type="number" min="0" placeholder="5" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-white/10 rounded-full px-4 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white text-center"/>
                    </div>
                </div>
+
                <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Description <span className="text-white/50 font-normal normal-case">(Optional)</span></label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/></div>
                <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Image</label><label className="w-full h-24 bg-white/10 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-[#D883B7]/50 text-gray-300 text-sm cursor-pointer hover:bg-white/20 transition"><input type="file" onChange={handleFileChange} className="hidden" accept="image/*"/>{formData.image ? <span className="text-[#D883B7] font-bold truncate max-w-[80%]">{formData.image}</span> : <span>Click to upload image</span>}</label></div>
                
@@ -340,7 +376,7 @@ function ProductListContent() {
                    className={`bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-12 py-3 rounded-full font-bold shadow-lg transition border border-white/20
                      ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90 hover:scale-105'}`}
                  >
-                   {isSubmitting ? "Adding..." : (isEditing ? "Update" : "Add Product")}
+                   {isSubmitting ? "Saving..." : (isEditing ? "Update Product" : "Add Product")}
                  </button>
                </div>
 

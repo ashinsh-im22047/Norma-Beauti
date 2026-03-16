@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 const getTableInfo = (id: string) => {
-  if (id.startsWith('prod_')) return { table: 'product', idCol: 'productid', nameCol: 'productname', priceCol: 'price', qtyCol: 'availablequantity', descCol: 'productdescription', imgCol: 'imageurl' };
-  if (id.startsWith('item_')) return { table: 'item', idCol: 'itemid', nameCol: 'itemname', priceCol: 'itemprice', qtyCol: 'itemquantity', descCol: 'itemdescription', imgCol: 'imageurl' };
+  if (id.startsWith('prod_')) return { table: 'product', idCol: 'productid', nameCol: 'productname', priceCol: 'price', qtyCol: 'availablequantity', descCol: 'productdescription', imgCol: 'imageurl', minCol: 'min_stock' };
+  if (id.startsWith('item_')) return { table: 'item', idCol: 'itemid', nameCol: 'itemname', priceCol: 'itemprice', qtyCol: 'itemquantity', descCol: 'itemdescription', imgCol: 'imageurl', minCol: 'min_stock' };
   return null;
 };
 
@@ -26,12 +26,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, price, quantity, description, image } = body;
+    const { name, price, quantity, description, image, minStock } = body; // --- NEW: Added minStock
     const info = getTableInfo(id);
     if (!info) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-    await db.query(`UPDATE ${info.table} SET ${info.nameCol}=?, ${info.priceCol}=?, ${info.qtyCol}=?, ${info.descCol}=?, ${info.imgCol}=? WHERE ${info.idCol}=?`, 
-    [name, price, quantity, description, image, id]);
+    const safeMinStock = minStock ? parseInt(minStock) : 5;
+
+    await db.query(`UPDATE ${info.table} SET ${info.nameCol}=?, ${info.priceCol}=?, ${info.qtyCol}=?, ${info.descCol}=?, ${info.imgCol}=?, ${info.minCol}=? WHERE ${info.idCol}=?`, 
+    [name, price, quantity, description, image, safeMinStock, id]);
 
     return NextResponse.json({ message: "Updated successfully" });
   } catch (error) {
@@ -39,12 +41,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-// PATCH (Update Status ONLY) -> NEW!
+// PATCH (Update Status ONLY)
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status } = body; // 'approved' or 'rejected'
+    const { status } = body; 
 
     if (!id.startsWith('prod_')) {
         return NextResponse.json({ error: "Only products have status" }, { status: 400 });
@@ -54,7 +56,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     return NextResponse.json({ message: "Status updated" });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
   }
 }
