@@ -186,22 +186,31 @@ export default function ShopPage() {
     const itemDesc = item.desc || item.description || item.productdescription;
     
     let { originalPrice, finalPrice, isDiscounted, badgeText } = getPriceDetails(item);
+
+    // --- BULLETPROOF VARIANT PARSER ---
+    let parsedVariants: any[] = [];
+    if (item.variants) {
+        try {
+            parsedVariants = typeof item.variants === 'string' ? JSON.parse(item.variants) : item.variants;
+        } catch (e) {
+            console.error("Error parsing variants for product", itemName, e);
+        }
+    }
     
-    // --- NEW: SMART MATRIX PRICING CHECK ---
     let displayPriceText = `LKR ${finalPrice.toLocaleString()}`;
     let displayOriginalPriceText = `LKR ${originalPrice.toLocaleString()}`;
     
-    // If base price is 0 AND the item has variants, calculate the lowest variant price
-    if (finalPrice === 0 && item.variants && item.variants.length > 0) {
-        // Find the lowest price among all variants
-        const lowestVariantPrice = Math.min(...item.variants.map((v: any) => parseFloat(v.price) || Infinity));
+    // --- UPDATED LOGIC: Always check for variants regardless of base price ---
+    if (parsedVariants.length > 0) {
+        // Map variants and filter out any NaN or 0 values
+        const validPrices = parsedVariants
+            .map((v: any) => parseFloat(v.price))
+            .filter((p: number) => !isNaN(p) && p > 0);
         
-        // If we found a valid lowest price, format it as "From LKR XXX"
-        if (lowestVariantPrice !== Infinity && lowestVariantPrice > 0) {
-            displayPriceText = `From LKR ${lowestVariantPrice.toLocaleString()}`;
-            displayOriginalPriceText = `From LKR ${lowestVariantPrice.toLocaleString()}`; 
-            // Note: Complex offer logic (like percentages off a variant matrix) would require 
-            // deeper integration into the getPriceDetails function. For now, we display the lowest base variant price.
+        if (validPrices.length > 0) {
+            const lowestVariantPrice = Math.min(...validPrices);
+            displayPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
+            displayOriginalPriceText = ``; // Hide original price for variant ranges to avoid confusion
         }
     }
 
@@ -210,7 +219,7 @@ export default function ShopPage() {
 
     return (
         <div 
-            onClick={() => setSelectedProduct({ ...item, description: itemDesc })}
+            onClick={() => setSelectedProduct({ ...item, description: itemDesc, variants: parsedVariants })}
             className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group border border-white/50 flex flex-col h-full relative cursor-pointer"
         >
             <div className="h-44 bg-gradient-to-b from-white to-[#fff0f5] relative overflow-hidden flex items-center justify-center">
@@ -245,7 +254,7 @@ export default function ShopPage() {
                     <div className="flex flex-col leading-tight">
                         {isPromo && isDiscounted ? (
                             <>
-                                <span className="text-[10px] text-gray-400 line-through">{displayOriginalPriceText}</span>
+                                {displayOriginalPriceText && <span className="text-[10px] text-gray-400 line-through">{displayOriginalPriceText}</span>}
                                 <span className="text-sm font-bold text-red-600">{displayPriceText}</span>
                             </>
                         ) : isPromo && item.offer_type === 'BOGO' ? (
@@ -261,18 +270,16 @@ export default function ShopPage() {
                     <button 
                         onClick={(e) => { 
                             e.stopPropagation(); 
-                            // If the product has variants, direct them to the modal instead of instantly adding to cart
-                            // because they need to select a size/color first!
-                            if (item.variants && item.variants.length > 0) {
-                                setSelectedProduct({ ...item, description: itemDesc });
+                            if (parsedVariants.length > 0) {
+                                setSelectedProduct({ ...item, description: itemDesc, variants: parsedVariants });
                             } else {
                                 handleAddToCart(item, 1); 
                             }
                         }}
                         className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm z-10 relative"
-                        title={item.variants && item.variants.length > 0 ? "Select Options" : "Add to Cart"}
+                        title={parsedVariants.length > 0 ? "Select Options" : "Add to Cart"}
                     >
-                    {item.variants && item.variants.length > 0 ? "..." : "+"}
+                    {parsedVariants.length > 0 ? "..." : "+"}
                     </button>
                 </div>
             </div>

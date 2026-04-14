@@ -44,9 +44,17 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     const [quantity, setQuantity] = useState(1);
     const [deliveryDays, setDeliveryDays] = useState({ min: 3, max: 5 });
     
-    // --- NEW: REVIEW STATES ---
     const [reviews, setReviews] = useState<any[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
+
+    // --- PARSE VARIANTS & FEATURES SAFELY ---
+    const parsedVariants = product.variants ? (typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants) : [];
+    const validVariants = Array.isArray(parsedVariants) ? parsedVariants : [];
+    
+    const parsedFeatures = product.features ? (typeof product.features === 'string' ? JSON.parse(product.features) : product.features) : [];
+    const validFeatures = Array.isArray(parsedFeatures) ? parsedFeatures : [];
+
+    const [selectedVariant, setSelectedVariant] = useState<any>(validVariants.length > 0 ? validVariants[0] : null);
 
     useEffect(() => {
         // 1. Fetch Delivery Settings
@@ -63,7 +71,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
         const fetchReviews = async () => {
             setLoadingReviews(true);
             try {
-                // Safely determine if this is a product or an item depending on where the modal was opened from
                 const pId = product.productid || (product.type === 'product' ? product.id : null);
                 const iId = product.itemid || (product.type === 'item' ? product.id : null);
                 
@@ -100,9 +107,13 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     const isInStock = maxAvailable > 0;
     const isLowStock = maxAvailable > 0 && maxAvailable <= 5;
 
-    const { originalPrice, finalPrice, isDiscounted, badgeText } = getPriceDetails(product);
+    // --- NEW: Calculate Dynamic Price based on Selected Variant ---
+    const dynamicProductForPrice = { 
+        ...product, 
+        price: selectedVariant && selectedVariant.price ? selectedVariant.price : (product.price || product.itemprice) 
+    };
+    const { originalPrice, finalPrice, isDiscounted, badgeText } = getPriceDetails(dynamicProductForPrice);
 
-    // --- NEW: Calculate Real Average Rating ---
     const averageRating = reviews.length > 0 
         ? (reviews.reduce((acc, rev) => acc + rev.rating, 0) / reviews.length).toFixed(1) 
         : 0;
@@ -115,7 +126,14 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     };
 
     const confirmAddToCart = () => {
-        onAddToCart(product, quantity);
+        const itemToAdd = { ...product };
+        if (selectedVariant && selectedVariant.combo) {
+             itemToAdd.price = selectedVariant.price;
+             itemToAdd.itemprice = selectedVariant.price;
+             // FIX: Use the combo array for the name instead of the undefined selectedVariant.name
+             itemToAdd.name = `${product.name || product.productname || product.itemname} - ${selectedVariant.combo.join(' / ')}`;
+        }
+        onAddToCart(itemToAdd, quantity);
         onClose(); 
     };
 
@@ -123,7 +141,22 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
         e.stopPropagation();
     };
 
-    const displayImage = product.imageurl || product.image;
+    // --- FIX: Map the main product image dynamically based on the selected variant ---
+    let dynamicVariantImage = null;
+    if (selectedVariant && selectedVariant.combo) {
+        for (const valName of selectedVariant.combo) {
+            for (const feature of validFeatures) {
+                const match = feature.values?.find((val: any) => val.name === valName && val.image);
+                if (match) {
+                    dynamicVariantImage = match.image;
+                    break;
+                }
+            }
+            if (dynamicVariantImage) break;
+        }
+    }
+
+    const displayImage = dynamicVariantImage || product.imageurl || product.image;
     const displayName = product.itemname || product.productname || product.name || "Product";
     const displayDesc = product.description || product.itemdescription || product.productdescription || "An exceptionally elegant choice from Norma Beauti, crafted to make you look and feel beautiful.";
     const displayType = product.type || (product.itemid ? "Ready-Made Box" : "Product");
@@ -136,7 +169,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
 
                 <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-50 rounded-3xl border border-pink-100 p-6 min-h-[300px] shrink-0 overflow-hidden relative shadow-inner">
                     {displayImage ? (
-                        <img src={displayImage} alt={displayName} className="w-full h-full object-contain" />
+                        <img src={displayImage} alt={displayName} className="w-full h-full object-contain transition-all duration-300" />
                     ) : (
                         <span className="text-6xl opacity-40">📷</span>
                     )}
@@ -164,7 +197,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                 {isDiscounted && (
                                     <p className="text-xs text-gray-500 line-through mb-0.5">LKR {originalPrice.toLocaleString()}</p>
                                 )}
-                                <p className="text-3xl font-bold text-[#880e4f]">
+                                <p className="text-3xl font-bold text-[#880e4f] transition-all duration-300">
                                     LKR {finalPrice.toLocaleString()}
                                 </p>
                             </div>
@@ -177,6 +210,53 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                 )}
                             </div>
                         </div>
+
+                        {/* --- FIXED: Dynamic Variants Selector with Combo Text and Images --- */}
+                        {validVariants.length > 0 && (
+                            <div className="mt-5">
+                                <p className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-2 ml-1">Select Features</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {validVariants.map((v: any, idx: number) => {
+                                        // Build the text out of the variant array (e.g. "Red / Large")
+                                        const comboText = v.combo ? v.combo.join(' / ') : `Option ${idx + 1}`;
+                                        
+                                        // Look up the image for this variant
+                                        let thumbImg = null;
+                                        if (v.combo) {
+                                            for (const valName of v.combo) {
+                                                for (const feature of validFeatures) {
+                                                    const match = feature.values?.find((val: any) => val.name === valName && val.image);
+                                                    if (match) {
+                                                        thumbImg = match.image;
+                                                        break;
+                                                    }
+                                                }
+                                                if (thumbImg) break;
+                                            }
+                                        }
+
+                                        const isSelected = selectedVariant?.combo?.join() === v.combo?.join();
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={(e) => { e.stopPropagation(); setSelectedVariant(v); }}
+                                                className={`px-4 py-2 rounded-full text-sm font-bold border transition-all duration-200 flex items-center gap-2 shadow-sm ${
+                                                    isSelected 
+                                                    ? 'bg-[#880e4f] text-white border-[#880e4f] shadow-md scale-105' 
+                                                    : 'bg-white text-[#4A1D46] border-pink-200 hover:bg-pink-50 hover:border-pink-300'
+                                                }`}
+                                            >
+                                                {thumbImg && (
+                                                    <img src={thumbImg} alt={comboText} className="w-5 h-5 rounded-full object-cover border border-white/50 bg-white" />
+                                                )}
+                                                {comboText}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="mt-4 flex items-center gap-3 text-sm text-[#7B2C62] bg-pink-50/50 p-4 rounded-2xl border border-pink-100 shadow-inner">
                             <span className="text-xl">🚚</span> 
@@ -191,7 +271,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                         </p>
                     </div>
 
-                    {/* --- DYNAMIC REVIEWS SECTION --- */}
                     <div className="space-y-2 border-t border-pink-100 pt-6 flex-grow">
                         <div className="flex justify-between items-center mb-3">
                             <h4 className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest ml-1">Verified Reviews</h4>
@@ -252,7 +331,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     );
 }
 
-// --- UPDATED: Dynamic Review Card Component ---
 const ReviewCard = ({ name, comment, rating, date }: { name: string, comment: string, rating: number, date: string }) => (
     <div className="p-4 bg-white rounded-2xl border border-gray-100 text-xs shadow-sm">
         <div className="flex justify-between items-start mb-1">

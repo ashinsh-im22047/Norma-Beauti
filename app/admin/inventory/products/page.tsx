@@ -10,6 +10,16 @@ type FeatureGroup = { name: string; values: FeatureValue[] };
 type ProductVariant = { combo: string[]; price: string; quantity: string };
 type SelectedProduct = { id: string; qty: number }; 
 
+// --- BUG FIX: SAFE JSON PARSER ---
+// Safely converts stringified JSON from the database back into real JavaScript Arrays
+const safeParseArray = (data: any) => {
+    if (Array.isArray(data)) return data;
+    if (typeof data === 'string') {
+        try { return JSON.parse(data); } catch { return []; }
+    }
+    return [];
+};
+
 function ProductListContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -142,14 +152,28 @@ function ProductListContent() {
     setIsLoading(true);
     try {
         const res = await fetch(`/api/inventory-items?categoryId=${categoryId}`, { cache: 'no-store' });
-        setItems(await res.json());
+        const data = await res.json();
+        // Use safeParseArray to guarantee arrays instead of strings
+        setItems(data.map((item: any) => ({ 
+            ...item, 
+            variants: safeParseArray(item.variants), 
+            features: safeParseArray(item.features) 
+        })));
     } catch(err) { console.error(err); } finally { setIsLoading(false); }
   };
 
   const fetchAvailableProducts = async () => {
     try {
         const res = await fetch('/api/inventory-items');
-        if (res.ok) setAvailableProducts((await res.json()).filter((i: any) => i.type === 'product'));
+        if (res.ok) {
+            const data = await res.json();
+            // Use safeParseArray to guarantee arrays instead of strings
+            setAvailableProducts(data.map((item: any) => ({
+                ...item,
+                variants: safeParseArray(item.variants),
+                features: safeParseArray(item.features)
+            })).filter((i: any) => i.type === 'product'));
+        }
     } catch (error) { console.error("Failed to load products", error); }
   };
 
@@ -233,7 +257,8 @@ function ProductListContent() {
                         if (val.file) {
                             const fd = new FormData(); fd.set('file', val.file);
                             const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                            return { name: val.name, image: (await uploadRes.json()).url }; 
+                            const uploadedData = await uploadRes.json();
+                            return { name: val.name, image: uploadedData.url }; 
                         }
                         return { name: val.name, image: val.image };
                     })
@@ -301,12 +326,14 @@ function ProductListContent() {
       setIsEditing(true); 
       setCurrentItemId(item.id || item.productid || item.itemid); 
       const existingImages = Array.isArray(item.images) && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
-      const mappedFeatures = (item.features || []).map((f: any) => ({ name: f.name, values: f.values.map((v: any) => typeof v === 'string' ? { name: v, image: '', file: null } : v) }));
+      
+      const safeFeatures = safeParseArray(item.features);
+      const mappedFeatures = safeFeatures.map((f: any) => ({ name: f.name, values: f.values.map((v: any) => typeof v === 'string' ? { name: v, image: '', file: null } : v) }));
       const mappedSelectedProducts = (item.includedProducts || []).map((p: any) => { if (typeof p === 'string') return { id: p, qty: 1 }; return p; });
 
       setFormData({ 
           name: item.name || item.productname || item.itemname, price: item.price, quantity: item.quantity, minStock: item.minStock?.toString() || '5', 
-          description: item.desc || item.description, images: existingImages, features: mappedFeatures, variants: item.variants || [], selectedProducts: mappedSelectedProducts 
+          description: item.desc || item.description, images: existingImages, features: mappedFeatures, variants: safeParseArray(item.variants), selectedProducts: mappedSelectedProducts 
       }); 
       setShowModal(true); setActiveMenuId(null); 
   };
@@ -336,25 +363,77 @@ function ProductListContent() {
       );
   };
 
+  // --- NEW BUG FIX: DEDICATED REVIEW LOADER COMPONENT ---
+  const ReviewLoader = ({ item, onClick }: { item: any, onClick: (reviews: any[]) => void }) => {
+      const [reviews, setReviews] = useState<any[]>([]);
+
+      useEffect(() => {
+          const fetchReviews = async () => {
+              try {
+                  const pId = item.productid || (item.type === 'product' ? item.id : null);
+                  const iId = item.itemid || (item.type === 'item' ? item.id : null);
+                  
+                  let url = '/api/reviews?';
+                  if (pId) url += `productId=${pId}`;
+                  else if (iId) url += `itemId=${iId}`;
+                  else return;
+
+                  const res = await fetch(url);
+                  if (res.ok) {
+                      setReviews(await res.json());
+                  }
+              } catch (err) {
+                  console.error("Failed to fetch reviews for card", err);
+              }
+          };
+          fetchReviews();
+      }, [item]);
+
+      const avgRating = calculateAverageRating(reviews);
+      const reviewCount = reviews.length;
+
+      return (
+          <div className="flex items-center gap-1 mb-4" onClick={(e) => { e.stopPropagation(); onClick(reviews); }}>
+              {renderStars(avgRating)}
+              {reviewCount > 0 && <span className="text-[10px] text-gray-400 ml-1">({reviewCount} Reviews)</span>}
+          </div>
+      );
+  };
+
   // --- E-COMMERCE GRID CARD ---
   const ProductCard = ({ item, isPending = false }: { item: any, isPending?: boolean }) => {
     const cardId = item.id || item.productid || item.itemid;
     const isHighlighted = cardId === highlightId;
     const displayImg = (item.images && item.images.length > 0) ? item.images[0] : item.image;
-    const totalQty = item.variants && item.variants.length > 0 ? item.variants.reduce((sum: number, v: any) => sum + parseInt(v.quantity || 0), 0) : item.quantity;
     
-    // Automatically merge reviews from the background fetch
-    const itemReviews = (item.reviews && item.reviews.length > 0) ? item.reviews : getReviewsForProduct(cardId);
-    const avgRating = calculateAverageRating(itemReviews);
-    const reviewCount = itemReviews.length;
+    const safeVariants = safeParseArray(item.variants);
+    const totalQty = safeVariants.length > 0 ? safeVariants.reduce((sum: number, v: any) => sum + parseInt(v.quantity || 0), 0) : item.quantity;
+    
+    // --- NEW: Calculate "Starting from" Price for Card ---
+    let displayPriceText = `LKR ${parseFloat(item.price || 0).toLocaleString()}`;
+    if (safeVariants.length > 0) {
+        const validPrices = safeVariants
+            .map((v: any) => parseFloat(v.price))
+            .filter((p: number) => !isNaN(p) && p > 0);
+        
+        if (validPrices.length > 0) {
+            const lowestVariantPrice = Math.min(...validPrices);
+            displayPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
+        }
+    }
+
+    // We will pass the dynamically loaded reviews up to the modal via this function
+    const openPreview = (loadedReviews: any[]) => {
+        setPreviewProduct({ ...item, actualReviews: loadedReviews }); 
+        setPreviewActiveImage(displayImg);
+    };
 
     return (
       <div 
         ref={isHighlighted ? highlightRef : null}
-        onClick={() => { setPreviewProduct({ ...item, actualReviews: itemReviews }); setPreviewActiveImage(displayImg); }}
         className={`group cursor-pointer flex flex-col bg-[#5D2E46]/80 backdrop-blur-md rounded-3xl overflow-hidden border ${isHighlighted ? 'border-red-500 ring-4 ring-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]' : 'border-white/10 hover:border-[#D883B7] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)]'} transition-all duration-300 hover:-translate-y-1 relative`}
       >
-        <div className="relative h-56 w-full bg-black/20 overflow-hidden">
+        <div className="relative h-56 w-full bg-black/20 overflow-hidden" onClick={() => openPreview([])}>
             {displayImg ? (
                 <img src={displayImg} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
             ) : (
@@ -380,32 +459,50 @@ function ProductListContent() {
         </div>
 
         <div className="p-5 flex flex-col flex-1">
-            <p className="text-[10px] text-[#D883B7] font-mono tracking-widest mb-1.5 uppercase">ID: {cardId}</p>
-            <h3 className="font-bold text-white text-lg leading-tight mb-2 line-clamp-2">{item.name || item.productname || item.itemname}</h3>
-            
-            <div className="flex items-center gap-1 mb-4">
-                {renderStars(avgRating)}
-                {reviewCount > 0 && <span className="text-[10px] text-gray-400 ml-1">({reviewCount} Reviews)</span>}
+            <div onClick={() => openPreview([])}>
+                <p className="text-[10px] text-[#D883B7] font-mono tracking-widest mb-1.5 uppercase">ID: {cardId}</p>
+                <h3 className="font-bold text-white text-lg leading-tight mb-2 line-clamp-2">{item.name || item.productname || item.itemname}</h3>
             </div>
+            
+            {/* Load and display reviews dynamically per card */}
+            <ReviewLoader item={item} onClick={openPreview} />
 
-            <div className="mt-auto flex items-end justify-between">
+            <div className="mt-auto flex items-end justify-between" onClick={() => openPreview([])}>
                 <div>
                     <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-0.5">Price</p>
-                    <p className="font-bold text-white text-xl">LKR {item.price}</p>
+                    <p className="font-bold text-white text-xl">{displayPriceText}</p>
                 </div>
                 {isPending && (
                     <div className="flex gap-2" onClick={e=>e.stopPropagation()}>
                         <button onClick={(e) => handleApproval(e, cardId, 'approved')} className="bg-[#10B981] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-emerald-400 transition-colors">Approve</button>
                     </div>
                 )}
-                {!isPending && item.variants && item.variants.length > 0 && (
-                    <span className="text-[10px] bg-[#D883B7]/20 text-[#D883B7] border border-[#D883B7]/50 px-2 py-1 rounded-md font-bold">{item.variants.length} Options</span>
+                {!isPending && safeVariants.length > 0 && (
+                    <span className="text-[10px] bg-[#D883B7]/20 text-[#D883B7] border border-[#D883B7]/50 px-2 py-1 rounded-md font-bold">{safeVariants.length} Options</span>
                 )}
             </div>
         </div>
       </div>
     );
   };
+
+  // --- NEW: Calculate "Starting from" Price for Modal Preview ---
+  let previewPriceText = '';
+  if (previewProduct) {
+      const safePreviewVariants = safeParseArray(previewProduct.variants);
+      previewPriceText = `LKR ${parseFloat(previewProduct.price || 0).toLocaleString()}`;
+      
+      if (safePreviewVariants.length > 0) {
+          const validPrices = safePreviewVariants
+              .map((v: any) => parseFloat(v.price))
+              .filter((p: number) => !isNaN(p) && p > 0);
+          
+          if (validPrices.length > 0) {
+              const lowestVariantPrice = Math.min(...validPrices);
+              previewPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
+          }
+      }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
@@ -487,12 +584,13 @@ function ProductListContent() {
                                    <div className="flex gap-2 mb-3"><input value={featureGroup.name} onChange={e => updateFeatureGroupName(groupIndex, e.target.value)} placeholder="Option Name (e.g. Colour)" className="flex-1 bg-black/30 rounded-full px-4 py-2 outline-none text-xs text-white border border-white/10 font-bold"/><button onClick={() => removeFeatureGroup(groupIndex)} className="text-xs text-red-400 font-bold px-3 bg-red-500/10 rounded-full hover:bg-red-500/20 transition">✕</button></div>
                                    <div className="flex flex-col gap-2 pl-2">
                                        {featureGroup.values.map((val, valIndex) => (
-                                           <div key={valIndex} className="flex gap-2 items-center bg-black/20 p-1.5 rounded-full border border-white/5">
-                                               <label className="w-8 h-8 rounded-full border border-dashed border-white/40 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#D883B7] transition shrink-0 bg-black/40 relative group" title="Upload swatch/thumbnail">
-                                                   {val.file ? <img src={URL.createObjectURL(val.file)} className="w-full h-full object-cover" /> : val.image ? <img src={val.image} className="w-full h-full object-cover" /> : <span className="text-[10px] text-white/50">+</span>}
+                                           <div key={valIndex} className="flex gap-2 items-center bg-black/20 p-2 rounded-xl border border-white/5">
+                                               <label className="w-10 h-10 rounded-lg border border-dashed border-white/40 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#D883B7] transition shrink-0 bg-black/40 relative group" title="Upload Feature Image">
+                                                   {val.file ? <img src={URL.createObjectURL(val.file)} className="w-full h-full object-cover" /> : val.image ? <img src={val.image} className="w-full h-full object-cover" /> : <span className="text-[14px] text-white/50">📷</span>}
                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFeatureImageChange(groupIndex, valIndex, e)} />
+                                                   { (val.file || val.image) && <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white font-bold transition">Change</div> }
                                                </label>
-                                               <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Value" className="flex-1 bg-transparent px-2 py-1 text-xs text-white outline-none placeholder-white/30"/>
+                                               <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Feature Value (e.g. Red)" className="flex-1 bg-transparent px-2 py-1 text-sm text-white outline-none placeholder-white/30 font-medium"/>
                                                <button onClick={() => removeFeatureValue(groupIndex, valIndex)} className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:text-red-400 hover:bg-red-500/10 transition shrink-0 mr-1">✕</button>
                                            </div>
                                        ))}
@@ -641,7 +739,7 @@ function ProductListContent() {
                           )}
                       </div>
 
-                      <p className="text-2xl font-bold text-white mb-6">LKR {previewProduct.price}</p>
+                      <p className="text-2xl font-bold text-white mb-6">{previewPriceText}</p>
                       
                       <div className="mb-6">
                           <h4 className="text-white text-sm font-bold uppercase tracking-wider mb-2">Description</h4>
@@ -658,7 +756,12 @@ function ProductListContent() {
                                               const vName = typeof val === 'string' ? val : val.name;
                                               const vImg = typeof val === 'object' && val.image ? val.image : null;
                                               return (
-                                                  <div key={vIdx} className="flex items-center gap-2 border border-white/20 rounded-full px-3 py-1.5 bg-white/5 hover:bg-white/10 transition cursor-pointer">
+                                                  <div 
+                                                      key={vIdx} 
+                                                      onClick={() => { if (vImg) setPreviewActiveImage(vImg); }}
+                                                      className={`flex items-center gap-2 border ${previewActiveImage === vImg ? 'border-[#D883B7] bg-white/10 scale-105' : 'border-white/20 bg-white/5 hover:bg-white/10'} rounded-full px-3 py-1.5 transition cursor-pointer`}
+                                                      title={vImg ? "Click to view variant image" : ""}
+                                                  >
                                                       {vImg && <img src={vImg} className="w-5 h-5 rounded-full object-cover border border-white/20" />}
                                                       <span className="text-sm text-gray-200">{vName}</span>
                                                   </div>
