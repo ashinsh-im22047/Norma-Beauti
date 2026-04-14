@@ -42,6 +42,7 @@ export default function CartPage() {
       });
       return;
     }
+    // Pass the selected items (now including the freeQty data) to local storage for the payment page
     localStorage.setItem('checkoutItems', JSON.stringify(selectedData));
     router.push('/payment');
   };
@@ -86,12 +87,19 @@ export default function CartPage() {
         return;
     }
 
+    // Optimistically update the UI so it feels fast, but we MUST re-fetch the cart 
+    // afterward so the backend can recalculate if the new quantity triggered a BOGO!
     setCartItems(cartItems.map(i => (i.id === item.id && i.type === item.type) ? { ...i, quantity: newQty } : i));
-    await fetch('/api/cart', {
+    
+    const res = await fetch('/api/cart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: item.id, type: item.type, quantity: newQty }),
     });
+
+    if (res.ok) {
+        fetchCart(); // Re-fetch to get updated BOGO math!
+    }
   };
 
   const toggleSelection = (id: string) => {
@@ -100,6 +108,7 @@ export default function CartPage() {
     setSelectedItems(newSet);
   };
 
+  // Total price only counts the actual paid quantity, completely ignoring free items
   const total = cartItems.filter(item => selectedItems.has(item.id)).reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
 
   return (
@@ -110,8 +119,6 @@ export default function CartPage() {
         
         {/* --- ELEGANT CUSTOMER HERO SECTION --- */}
         <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            
-            {/* Decorative background glows */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
             
@@ -136,7 +143,6 @@ export default function CartPage() {
                 </div>
             </div>
         </div>
-        {/* --- END HERO SECTION --- */}
 
         {cartItems.length === 0 ? (
            <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-lg border border-white/60 p-16 text-center max-w-2xl mx-auto">
@@ -151,30 +157,48 @@ export default function CartPage() {
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="flex-grow space-y-4">
               {cartItems.map((item) => (
-                <div key={`${item.type}-${item.id}`} className="flex items-center gap-4 bg-white/70 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-white/50 hover:shadow-md transition-shadow group">
-                  <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleSelection(item.id)} className="w-5 h-5 accent-[#880e4f] cursor-pointer shrink-0" />
+                <div key={`${item.type}-${item.id}`} className="flex flex-col sm:flex-row items-center gap-4 bg-white/70 backdrop-blur-md p-5 rounded-[1.5rem] shadow-sm border border-white/50 hover:shadow-md transition-shadow group relative">
                   
-                  <div className="w-20 h-20 rounded-xl bg-gray-50 flex shrink-0 items-center justify-center overflow-hidden border border-white/50 shadow-sm">
-                      {item.image ? (
-                          <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.name} />
-                      ) : (
-                          <span className="text-2xl opacity-50">📷</span>
-                      )}
+                  <div className="flex w-full sm:w-auto items-center gap-4">
+                      <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleSelection(item.id)} className="w-5 h-5 accent-[#880e4f] cursor-pointer shrink-0" />
+                      
+                      <div className="w-20 h-20 rounded-xl bg-gray-50 flex shrink-0 items-center justify-center overflow-hidden border border-white/50 shadow-sm relative">
+                          {item.image ? (
+                              <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.name} />
+                          ) : (
+                              <span className="text-2xl opacity-50">📷</span>
+                          )}
+                      </div>
                   </div>
 
-                  <div className="flex-grow min-w-0">
+                  <div className="flex-grow min-w-0 w-full text-center sm:text-left">
                     <h3 className="font-bold text-[#880e4f] text-lg leading-tight truncate">{item.name}</h3>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">{item.type}</p>
-                    <p className="font-bold text-[#c2185b] mt-1 text-base">LKR {parseFloat(item.price).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1 mb-2">{item.type}</p>
+                    
+                    {/* --- NEW: THE BOGO FREE ITEM TAG --- */}
+                    {item.freeQty > 0 && (
+                        <div className="inline-block bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm mb-2 animate-fade-in">
+                            🎁 +{item.freeQty} Free Item{item.freeQty > 1 ? 's' : ''} Included!
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                        {item.badgeText && item.originalPrice !== item.price && (
+                            <span className="text-xs text-gray-400 line-through">LKR {parseFloat(item.originalPrice).toLocaleString()}</span>
+                        )}
+                        <p className="font-bold text-[#c2185b] text-lg">LKR {parseFloat(item.price).toLocaleString()}</p>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center bg-white rounded-full border border-pink-100 shadow-sm p-1 shrink-0">
-                    <button onClick={() => updateQuantity(item, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">-</button>
-                    <span className="font-bold w-8 text-center text-sm text-[#4a1d46]">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">+</button>
+                  <div className="flex items-center gap-4 w-full sm:w-auto justify-center">
+                      <div className="flex items-center bg-white rounded-full border border-pink-100 shadow-sm p-1 shrink-0">
+                        <button onClick={() => updateQuantity(item, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">-</button>
+                        <span className="font-bold w-8 text-center text-sm text-[#4a1d46]">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">+</button>
+                      </div>
+                      
+                      <button onClick={() => openDeleteDialog(item.id, item.type, item.name)} className="w-10 h-10 flex shrink-0 items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 rounded-full transition-all shadow-sm" title="Remove Item">✕</button>
                   </div>
-                  
-                  <button onClick={() => openDeleteDialog(item.id, item.type, item.name)} className="w-10 h-10 flex shrink-0 items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 rounded-full transition-all shadow-sm ml-2" title="Remove Item">✕</button>
                 </div>
               ))}
             </div>
@@ -199,7 +223,7 @@ export default function CartPage() {
         )}
       </main>
 
-      {/* --- CONFIRMATION DIALOG (FOR DELETING) --- */}
+      {/* --- CONFIRMATION DIALOG --- */}
       {confirmDialog.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
@@ -214,7 +238,7 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* --- CUSTOM ALERT DIALOG (FOR STOCK LIMITS & EMPTY CHECKOUT) --- */}
+      {/* --- CUSTOM ALERT DIALOG --- */}
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 relative">

@@ -3,7 +3,6 @@ import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    // Fetch offers along with their connected products and items
     const [offers]: any = await db.query(`
       SELECT o.*, 
         (SELECT GROUP_CONCAT(productid) FROM offeredproducts op WHERE op.offerid = o.offerid) as attached_products,
@@ -12,7 +11,6 @@ export async function GET() {
       ORDER BY o.startdate DESC
     `);
 
-    // Parse the concatenated strings into arrays for the frontend
     const formattedOffers = offers.map((o: any) => ({
       ...o,
       productCount: o.attached_products ? o.attached_products.split(',').length : 0,
@@ -30,14 +28,26 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { offername, discountpercent, startdate, enddate, selectedProducts, selectedItems } = await req.json();
+    const { 
+        offername, startdate, enddate, offer_type, 
+        discountpercent, fixed_discount, buy_qty, get_qty, 
+        selectedProducts, selectedItems 
+    } = await req.json();
+    
     const offerid = `off_${Date.now()}`;
-    const discount = discountpercent ? parseFloat(discountpercent) : null;
+
+    // Clean up data based on type so we don't save irrelevant data
+    const dPercent = offer_type === 'PERCENTAGE' && discountpercent ? parseFloat(discountpercent) : null;
+    const fDiscount = offer_type === 'FIXED' && fixed_discount ? parseFloat(fixed_discount) : null;
+    const bQty = offer_type === 'BOGO' && buy_qty ? parseInt(buy_qty) : null;
+    const gQty = offer_type === 'BOGO' && get_qty ? parseInt(get_qty) : null;
 
     // 1. Insert Offer
     await db.query(
-      'INSERT INTO offer (offerid, offername, discountpercent, startdate, enddate) VALUES (?, ?, ?, ?, ?)',
-      [offerid, offername, discount, startdate, enddate]
+      `INSERT INTO offer 
+      (offerid, offername, startdate, enddate, offer_type, discountpercent, fixed_discount, buy_qty, get_qty) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [offerid, offername, startdate, enddate, offer_type, dPercent, fDiscount, bQty, gQty]
     );
 
     // 2. Attach Products
@@ -59,13 +69,25 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { offerid, offername, discountpercent, startdate, enddate, selectedProducts, selectedItems } = await req.json();
-    const discount = discountpercent ? parseFloat(discountpercent) : null;
+    const { 
+        offerid, offername, startdate, enddate, offer_type, 
+        discountpercent, fixed_discount, buy_qty, get_qty, 
+        selectedProducts, selectedItems 
+    } = await req.json();
+    
+    // Clean up data
+    const dPercent = offer_type === 'PERCENTAGE' && discountpercent ? parseFloat(discountpercent) : null;
+    const fDiscount = offer_type === 'FIXED' && fixed_discount ? parseFloat(fixed_discount) : null;
+    const bQty = offer_type === 'BOGO' && buy_qty ? parseInt(buy_qty) : null;
+    const gQty = offer_type === 'BOGO' && get_qty ? parseInt(get_qty) : null;
 
     // 1. Update main offer details
     await db.query(
-      'UPDATE offer SET offername=?, discountpercent=?, startdate=?, enddate=? WHERE offerid=?',
-      [offername, discount, startdate, enddate, offerid]
+      `UPDATE offer SET 
+      offername=?, startdate=?, enddate=?, offer_type=?, 
+      discountpercent=?, fixed_discount=?, buy_qty=?, get_qty=? 
+      WHERE offerid=?`,
+      [offername, startdate, enddate, offer_type, dPercent, fDiscount, bQty, gQty, offerid]
     );
 
     // 2. Clear old attachments

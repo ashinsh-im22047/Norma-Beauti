@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AdminHeader from '@/components/AdminHeader'; // Imported your new Admin Header!
 
 export default function RegisteredUsersPage() {
   const router = useRouter();
@@ -41,13 +42,8 @@ export default function RegisteredUsersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#4a1d46] pb-20">
       
-      {/* HEADER */}
-      <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white py-4 px-8 flex justify-between items-center shadow-lg sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-           <button onClick={() => router.push('/admin/dashboard')} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
-           <h1 className="text-xl font-bold tracking-wider text-[#F3E5F5] uppercase">Customer List</h1>
-        </div>
-      </header>
+      {/* --- REPLACED WITH YOUR NEW ADMIN HEADER --- */}
+      <AdminHeader />
 
       <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
         

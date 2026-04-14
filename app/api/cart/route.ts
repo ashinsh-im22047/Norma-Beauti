@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 
+export const dynamic = 'force-dynamic';
+
 // Helper: Get User ID
 async function getUserId() {
   const cookieStore = await cookies();
@@ -32,20 +34,85 @@ export async function GET(req: Request) {
     const cartid = await getCartId(userid);
     if (!cartid) return NextResponse.json({ items: [] });
 
-    // UPDATE: We now select 'availablequantity' and 'itemquantity' as 'maxStock'
+    // --- SMART FETCH: Grab items AND their attached active offers ---
     const [productRows]: any = await db.query(`
-      SELECT p.productid as id, p.productname as name, p.price, p.imageurl as image, cp.productquantity as quantity, p.availablequantity as maxStock, 'product' as type 
-      FROM cartproducts cp JOIN product p ON cp.productid = p.productid WHERE cp.cartid = ?`, [cartid]);
+      SELECT p.productid as id, p.productname as name, p.price, p.imageurl as image, cp.productquantity as quantity, p.availablequantity as maxStock, 'product' as type,
+      o.offername, o.offer_type, o.discountpercent, o.fixed_discount, o.buy_qty, o.get_qty, o.startdate, o.enddate
+      FROM cartproducts cp 
+      JOIN product p ON cp.productid = p.productid 
+      LEFT JOIN offeredproducts op ON p.productid = op.productid
+      LEFT JOIN offer o ON op.offerid = o.offerid
+      WHERE cp.cartid = ?`, [cartid]);
       
     const [itemRows]: any = await db.query(`
-      SELECT i.itemid as id, i.itemname as name, i.itemprice as price, i.imageurl as image, ci.itemquantity as quantity, i.itemquantity as maxStock, 'item' as type 
-      FROM cartitems ci JOIN item i ON ci.itemid = i.itemid WHERE ci.cartid = ?`, [cartid]);
+      SELECT i.itemid as id, i.itemname as name, i.itemprice as price, i.imageurl as image, ci.itemquantity as quantity, i.itemquantity as maxStock, 'item' as type,
+      o.offername, o.offer_type, o.discountpercent, o.fixed_discount, o.buy_qty, o.get_qty, o.startdate, o.enddate
+      FROM cartitems ci 
+      JOIN item i ON ci.itemid = i.itemid 
+      LEFT JOIN offereditems oi ON i.itemid = oi.itemid
+      LEFT JOIN offer o ON oi.offerid = o.offerid
+      WHERE ci.cartid = ?`, [cartid]);
 
-    return NextResponse.json({ items: [...productRows, ...itemRows] });
-  } catch (error) { return NextResponse.json({ error: "Server Error" }, { status: 500 }); }
+    const rawItems = [...productRows, ...itemRows];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // --- DYNAMIC OFFER CALCULATOR ---
+    const processedItems = rawItems.map(row => {
+        let finalPrice = parseFloat(row.price || 0);
+        let originalPrice = finalPrice;
+        let freeQty = 0;
+        let badgeText = null;
+
+        // Check if there is an offer and if it is currently active
+        if (row.startdate && row.enddate) {
+            const start = new Date(row.startdate); start.setHours(0, 0, 0, 0);
+            const end = new Date(row.enddate); end.setHours(23, 59, 59, 999);
+            
+            if (today >= start && today <= end) {
+                if (row.offer_type === 'PERCENTAGE' && row.discountpercent) {
+                    finalPrice = originalPrice - (originalPrice * row.discountpercent / 100);
+                    badgeText = `${row.discountpercent}% OFF`;
+                } 
+                else if (row.offer_type === 'FIXED' && row.fixed_discount) {
+                    finalPrice = Math.max(0, originalPrice - row.fixed_discount);
+                    badgeText = `LKR ${row.fixed_discount} OFF`;
+                } 
+                else if (row.offer_type === 'BOGO' && row.buy_qty && row.get_qty) {
+                    // --- THE BOGO MAGIC ---
+                    const bundles = Math.floor(row.quantity / row.buy_qty);
+                    freeQty = bundles * row.get_qty;
+                    badgeText = `Buy ${row.buy_qty} Get ${row.get_qty} FREE`;
+                }
+            }
+        }
+
+        return {
+            id: row.id,
+            name: row.name,
+            price: finalPrice.toFixed(2), 
+            originalPrice: originalPrice.toFixed(2),
+            image: row.image,
+            quantity: row.quantity,
+            maxStock: row.maxStock,
+            type: row.type,
+            freeQty: freeQty, 
+            badgeText: badgeText
+        };
+    });
+
+    return NextResponse.json({ items: processedItems }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      },
+    });
+  } catch (error) { 
+      console.error(error);
+      return NextResponse.json({ error: "Server Error" }, { status: 500 }); 
+  }
 }
 
-// --- POST (Add to Cart) ---
 export async function POST(req: Request) {
   try {
     const userid = await getUserId();
@@ -55,7 +122,9 @@ export async function POST(req: Request) {
     if (custrows.length === 0) return NextResponse.json({ error: "Complete profile first" }, { status: 404 });
     const customerid = custrows[0].id;
 
-    const { id, type } = await req.json();
+    const { id, type, quantity } = await req.json();
+    const qtyToAdd = quantity ? parseInt(quantity) : 1; 
+
     let [carts]: any = await db.query('SELECT cartid FROM cart WHERE customerid = ?', [customerid]);
     let cartid;
 
@@ -64,7 +133,6 @@ export async function POST(req: Request) {
       cartid = newCart.insertId;
     } else { cartid = carts[0].cartid; }
 
-    // --- UPDATE: Check stock limits before adding ---
     let availableStock = 0;
     let currentCartQty = 0;
 
@@ -84,21 +152,30 @@ export async function POST(req: Request) {
       if (cQty.length > 0) currentCartQty = cQty[0].itemquantity;
     }
 
-    if (currentCartQty + 1 > availableStock) {
+    if (currentCartQty + qtyToAdd > availableStock) {
       return NextResponse.json({ error: `Only ${availableStock} left in stock!` }, { status: 400 });
     }
 
-    // If stock is okay, proceed to insert/update
     if (type === 'product') {
-      await db.query(`INSERT INTO cartproducts (cartid, productid, productquantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE productquantity = productquantity + 1`, [cartid, id]);
+      await db.query(
+          `INSERT INTO cartproducts (cartid, productid, productquantity) VALUES (?, ?, ?) 
+           ON DUPLICATE KEY UPDATE productquantity = productquantity + ?`, 
+          [cartid, id, qtyToAdd, qtyToAdd]
+      );
     } else {
-      await db.query(`INSERT INTO cartitems (cartid, itemid, itemquantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE itemquantity = itemquantity + 1`, [cartid, id]);
+      await db.query(
+          `INSERT INTO cartitems (cartid, itemid, itemquantity) VALUES (?, ?, ?) 
+           ON DUPLICATE KEY UPDATE itemquantity = itemquantity + ?`, 
+          [cartid, id, qtyToAdd, qtyToAdd]
+      );
     }
     return NextResponse.json({ message: "Success" });
-  } catch (error) { return NextResponse.json({ error: "Server Error" }, { status: 500 }); }
+  } catch (error) { 
+      console.error(error);
+      return NextResponse.json({ error: "Server Error" }, { status: 500 }); 
+  }
 }
 
-// --- PUT (Update Quantity) ---
 export async function PUT(req: Request) {
   try {
     const userid = await getUserId();
@@ -107,7 +184,6 @@ export async function PUT(req: Request) {
     const { id, type, quantity } = await req.json();
     if (quantity < 1) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
-    // --- UPDATE: Check stock limits before updating ---
     let availableStock = 0;
     if (type === 'product') {
       const [pStock]: any = await db.query('SELECT availablequantity FROM product WHERE productid = ?', [id]);
@@ -121,7 +197,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: `Only ${availableStock} left in stock!` }, { status: 400 });
     }
 
-    // If stock is okay, proceed to update
     if (type === 'product') await db.query('UPDATE cartproducts SET productquantity = ? WHERE cartid = ? AND productid = ?', [quantity, cartid, id]);
     else await db.query('UPDATE cartitems SET itemquantity = ? WHERE cartid = ? AND itemid = ?', [quantity, cartid, id]);
     
@@ -129,7 +204,6 @@ export async function PUT(req: Request) {
   } catch (error) { return NextResponse.json({ error: "Server Error" }, { status: 500 }); }
 }
 
-// --- DELETE (Remove Item) ---
 export async function DELETE(req: Request) {
   try {
     const userid = await getUserId();

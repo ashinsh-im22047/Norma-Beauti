@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import CustomerHeader from '@/components/CustomerHeader';
+import ProductDetailsModal, { getPriceDetails } from '@/components/ProductDetailsModal'; 
 import { useRouter } from 'next/navigation'; 
 
 const CATEGORIES = [
@@ -16,12 +17,15 @@ export default function ShopPage() {
   
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
-  const [categoryNewArrivals, setCategoryNewArrivals] = useState<any[]>([]); 
   
-  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [categoryNewArrivals, setCategoryNewArrivals] = useState<any[]>([]); 
+  const [categoryOffers, setCategoryOffers] = useState<any[]>([]); 
+  
   const [offerSlideIndex, setOfferSlideIndex] = useState(0);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const itemsPerSlide = 4;
 
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState('newest');
@@ -30,9 +34,7 @@ export default function ShopPage() {
   const [maxPrice, setMaxPrice] = useState(''); 
   
   const [activeCategory, setActiveCategory] = useState('all');
-
-  const [slideIndex, setSlideIndex] = useState(0);
-  const itemsPerSlide = 4;
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const [alertState, setAlertState] = useState({ 
     show: false, title: '', message: '', type: 'success', redirect: '' 
@@ -50,17 +52,19 @@ export default function ShopPage() {
       try {
           const res = await fetch('/api/offers');
           if (res.ok) {
-              setActiveOffers(await res.json());
+              return await res.json();
           }
       } catch (error) {
           console.error("Failed to load offers", error);
       }
+      return [];
   };
 
-  const fetchProductsByCategory = useCallback(async (catId: string) => {
+  const fetchProductsByCategory = useCallback(async (catId: string, currentOffers: any[]) => {
     setIsLoadingProducts(true);
     try {
-        setSearchTerm(''); setMinPrice(''); setMaxPrice(''); setSortOption('newest'); setSlideIndex(0);
+        setSearchTerm(''); setMinPrice(''); setMaxPrice(''); setSortOption('newest'); 
+        setSlideIndex(0); setOfferSlideIndex(0);
 
         const url = catId === 'all' ? '/api/inventory-items' : `/api/inventory-items?categoryId=${catId}`;
         const res = await fetch(url);
@@ -73,10 +77,36 @@ export default function ShopPage() {
            });
         }
         
-        setProducts(data);
-        setFilteredProducts(data);
+        const enhancedData = data.map((item: any, index: number) => {
+            const offerMatch = currentOffers.find(offer => offer.id === (item.id || item.productid || item.itemid));
+            const isNewArrival = index >= data.length - 10;
 
-        const latestItems = [...data].reverse().slice(0, 5);
+            if (offerMatch) {
+                return {
+                    ...item,
+                    isOffer: true,
+                    offername: offerMatch.offername,
+                    offer_type: offerMatch.offer_type,
+                    discountpercent: offerMatch.discountpercent,
+                    fixed_discount: offerMatch.fixed_discount,
+                    buy_qty: offerMatch.buy_qty,
+                    get_qty: offerMatch.get_qty,
+                    isNew: isNewArrival 
+                };
+            }
+            
+            return { ...item, isNew: isNewArrival };
+        });
+
+        const reversedData = enhancedData.reverse();
+
+        setProducts(reversedData);
+        setFilteredProducts(reversedData);
+
+        const currentCatOffers = reversedData.filter((item: any) => item.isOffer);
+        setCategoryOffers(currentCatOffers);
+
+        const latestItems = reversedData.filter((item: any) => item.isNew && !item.isOffer).slice(0, 10);
         setCategoryNewArrivals(latestItems);
 
     } catch (err) { console.error(err); } 
@@ -84,36 +114,40 @@ export default function ShopPage() {
   }, []);
 
   useEffect(() => { 
-      fetchProductsByCategory(activeCategory); 
-      fetchActiveOffers(); 
+      const loadAllData = async () => {
+          const offers = await fetchActiveOffers(); 
+          await fetchProductsByCategory(activeCategory, offers); 
+      };
+      loadAllData();
   }, [activeCategory, fetchProductsByCategory]);
 
   useEffect(() => {
     let result = [...products];
     if (searchTerm) result = result.filter(item => (item.name || item.productname || item.itemname || '').toLowerCase().includes(searchTerm.toLowerCase()));
-    if (minPrice) result = result.filter(item => parseFloat(item.price) >= parseFloat(minPrice));
-    if (maxPrice) result = result.filter(item => parseFloat(item.price) <= parseFloat(maxPrice));
-    if (sortOption === 'price-low') result.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-    else if (sortOption === 'price-high') result.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    
+    if (minPrice) result = result.filter(item => getPriceDetails(item).finalPrice >= parseFloat(minPrice));
+    if (maxPrice) result = result.filter(item => getPriceDetails(item).finalPrice <= parseFloat(maxPrice));
+    
+    if (sortOption === 'price-low') result.sort((a, b) => getPriceDetails(a).finalPrice - getPriceDetails(b).finalPrice);
+    else if (sortOption === 'price-high') result.sort((a, b) => getPriceDetails(b).finalPrice - getPriceDetails(a).finalPrice);
     
     setFilteredProducts(result);
   }, [searchTerm, sortOption, minPrice, maxPrice, products]);
 
-  const handleAddToCart = async (item: any) => {
+  const handleAddToCart = async (item: any, quantity: number = 1) => {
     const storedUserId = localStorage.getItem('userId');
     const storedSession = document.cookie.includes("user_session=true");
 
     if (!storedUserId && !storedSession) {
-        setAlertState({
-          show: true, title: 'Login Required', message: 'Please login or create an account to add items to your cart.', type: 'error', redirect: '/login' 
-        });
+        setAlertState({ show: true, title: 'Login Required', message: 'Please login or create an account to add items to your cart.', type: 'error', redirect: '/login' });
         return; 
     }
 
     try {
-      // --- THE FIX IS HERE: Automatically detect product vs item based on ID! ---
       const itemId = item.id || item.productid || item.itemid;
       const itemType = item.type || (String(itemId).includes('prod') ? 'product' : 'item');
+
+      const { finalPrice } = getPriceDetails(item);
 
       const res = await fetch('/api/cart', {
         method: 'POST',
@@ -121,7 +155,8 @@ export default function ShopPage() {
         body: JSON.stringify({ 
           id: itemId, 
           type: itemType,
-          price: item.price 
+          price: finalPrice, 
+          quantity: quantity
         }),
       });
 
@@ -132,7 +167,7 @@ export default function ShopPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
 
-      setAlertState({ show: true, title: 'Added to Cart', message: `${item.name || item.productname || item.itemname} has been added to your cart.`, type: 'success', redirect: '' });
+      setAlertState({ show: true, title: 'Added to Bag', message: `${quantity}x ${item.name || item.productname || item.itemname} added to your shopping bag.`, type: 'success', redirect: '' });
     } catch (error: any) {
       setAlertState({ show: true, title: 'Error', message: error.message || 'Something went wrong.', type: 'error', redirect: '' });
     }
@@ -141,35 +176,65 @@ export default function ShopPage() {
   const nextSlide = () => setSlideIndex(prev => (prev + itemsPerSlide < categoryNewArrivals.length ? prev + 1 : 0));
   const prevSlide = () => setSlideIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, categoryNewArrivals.length - itemsPerSlide)));
   
-  const nextOfferSlide = () => setOfferSlideIndex(prev => (prev + itemsPerSlide < activeOffers.length ? prev + 1 : 0));
-  const prevOfferSlide = () => setOfferSlideIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, activeOffers.length - itemsPerSlide)));
+  const nextOfferSlide = () => setOfferSlideIndex(prev => (prev + itemsPerSlide < categoryOffers.length ? prev + 1 : 0));
+  const prevOfferSlide = () => setOfferSlideIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, categoryOffers.length - itemsPerSlide)));
 
-  const ProductCard = ({ item, isNew = false, isOffer = false }: { item: any, isNew?: boolean, isOffer?: boolean }) => {
-    const imgUrl = item.imageurl || item.image;
+  // --- STRICT PRODUCT CARD BADGE LOGIC & SMART PRICING ---
+  const ProductCard = ({ item }: { item: any }) => {
+    const imgUrl = item.imageurl || item.image || (item.images && item.images.length > 0 ? item.images[0] : null);
     const itemName = item.name || item.productname || item.itemname;
     const itemDesc = item.desc || item.description || item.productdescription;
     
-    const isPromo = isOffer || item.isOffer;
+    let { originalPrice, finalPrice, isDiscounted, badgeText } = getPriceDetails(item);
+    
+    // --- NEW: SMART MATRIX PRICING CHECK ---
+    let displayPriceText = `LKR ${finalPrice.toLocaleString()}`;
+    let displayOriginalPriceText = `LKR ${originalPrice.toLocaleString()}`;
+    
+    // If base price is 0 AND the item has variants, calculate the lowest variant price
+    if (finalPrice === 0 && item.variants && item.variants.length > 0) {
+        // Find the lowest price among all variants
+        const lowestVariantPrice = Math.min(...item.variants.map((v: any) => parseFloat(v.price) || Infinity));
+        
+        // If we found a valid lowest price, format it as "From LKR XXX"
+        if (lowestVariantPrice !== Infinity && lowestVariantPrice > 0) {
+            displayPriceText = `From LKR ${lowestVariantPrice.toLocaleString()}`;
+            displayOriginalPriceText = `From LKR ${lowestVariantPrice.toLocaleString()}`; 
+            // Note: Complex offer logic (like percentages off a variant matrix) would require 
+            // deeper integration into the getPriceDetails function. For now, we display the lowest base variant price.
+        }
+    }
+
+    const isPromo = item.isOffer || isDiscounted || badgeText;
+    const isNew = item.isNew;
 
     return (
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group border border-white/50 flex flex-col h-full relative">
+        <div 
+            onClick={() => setSelectedProduct({ ...item, description: itemDesc })}
+            className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group border border-white/50 flex flex-col h-full relative cursor-pointer"
+        >
             <div className="h-44 bg-gradient-to-b from-white to-[#fff0f5] relative overflow-hidden flex items-center justify-center">
                 {imgUrl && imgUrl.startsWith('http') ? (
                     <img src={imgUrl} alt={itemName} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-in-out" />
                 ) : <span className="text-3xl text-gray-300">📷</span>}
                 
-                {isNew && !isPromo && <div className="absolute top-3 right-3 bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white text-[9px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider">NEW</div>}
+                {isNew && !isPromo && (
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white text-[9px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider z-10">NEW</div>
+                )}
                 
-                {isPromo && item.discountpercent && (
-                    <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider animate-bounce">
-                        {item.discountpercent}% OFF
+                {isPromo && badgeText && (
+                    <div className={`absolute top-3 left-3 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider animate-bounce z-10
+                        ${item.offer_type === 'BOGO' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 
+                          item.offer_type === 'FIXED' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
+                          'bg-gradient-to-r from-[#880e4f] to-[#e91e63]'}`}
+                    >
+                        {badgeText}
                     </div>
                 )}
-                {isPromo && !item.discountpercent && (
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-[#9B5DE5] to-[#D883B7] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider">
-                        {item.offername}
-                    </div>
-                )}
+
+                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                    <span className="text-xs font-bold text-white bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-sm shadow-lg border border-white/20">View Details</span>
+                </div>
             </div>
 
             <div className="p-4 flex flex-col gap-1 flex-grow">
@@ -178,26 +243,36 @@ export default function ShopPage() {
                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#f8bbd0]/30">
                     
                     <div className="flex flex-col leading-tight">
-                        {isPromo && item.discountpercent ? (
+                        {isPromo && isDiscounted ? (
                             <>
-                                <span className="text-[10px] text-gray-400 line-through">LKR {item.originalPrice}</span>
-                                <span className="text-sm font-bold text-red-600">LKR {item.offerPrice}</span>
+                                <span className="text-[10px] text-gray-400 line-through">{displayOriginalPriceText}</span>
+                                <span className="text-sm font-bold text-red-600">{displayPriceText}</span>
                             </>
-                        ) : isPromo && !item.discountpercent ? (
+                        ) : isPromo && item.offer_type === 'BOGO' ? (
                             <>
                                 <span className="text-[9px] text-[#e91e63] font-bold uppercase tracking-wider">{item.offername}</span>
-                                <span className="text-sm font-bold text-[#ad1457]">LKR {item.price}</span>
+                                <span className="text-sm font-bold text-[#ad1457]">{displayPriceText}</span>
                             </>
                         ) : (
-                            <span className="text-sm font-bold text-[#ad1457]">LKR {item.price}</span>
+                            <span className="text-sm font-bold text-[#ad1457]">{displayPriceText}</span>
                         )}
                     </div>
 
                     <button 
-                    onClick={() => handleAddToCart(item)}
-                    className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm"
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            // If the product has variants, direct them to the modal instead of instantly adding to cart
+                            // because they need to select a size/color first!
+                            if (item.variants && item.variants.length > 0) {
+                                setSelectedProduct({ ...item, description: itemDesc });
+                            } else {
+                                handleAddToCart(item, 1); 
+                            }
+                        }}
+                        className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm z-10 relative"
+                        title={item.variants && item.variants.length > 0 ? "Select Options" : "Add to Cart"}
                     >
-                    +
+                    {item.variants && item.variants.length > 0 ? "..." : "+"}
                     </button>
                 </div>
             </div>
@@ -252,21 +327,23 @@ export default function ShopPage() {
 
       <main className="container mx-auto px-6 py-10 relative z-20">
         
-        {/* --- EXCLUSIVE OFFERS SLIDER --- */}
-        {!searchTerm && activeCategory === 'all' && activeOffers.length > 0 && (
+        {/* --- DYNAMIC OFFERS SLIDER --- */}
+        {!searchTerm && categoryOffers.length > 0 && (
             <div className="mb-20 bg-gradient-to-r from-[#ff7e5f] via-[#e91e63] to-[#880e4f] p-8 rounded-[2.5rem] shadow-2xl border border-white/20 relative animate-fade-in-up">
                 <div className="absolute top-0 right-10 bg-yellow-400 text-black px-4 py-1 rounded-b-xl text-xs font-bold shadow-md tracking-widest uppercase">Limited Time</div>
                 <div className="flex items-center justify-between mb-8 relative z-10">
                     <button onClick={prevOfferSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#e91e63] transition-all flex items-center justify-center text-xl group"><span className="group-hover:-translate-x-0.5 transition-transform">&lt;</span></button>
                     <div className="text-center">
                         <h3 className="text-3xl font-serif font-bold text-white tracking-widest mb-1">Exclusive Offers</h3>
-                        <p className="text-white/80 text-xs tracking-widest uppercase">Grab them before they're gone!</p>
+                        <p className="text-white/80 text-xs tracking-widest uppercase">
+                            {activeCategory === 'all' ? "Grab them before they're gone!" : `Deals on ${CATEGORIES.find(c => c.id === activeCategory)?.name}`}
+                        </p>
                         <div className="h-0.5 w-24 bg-white/30 mx-auto mt-2"></div>
                     </div>
                     <button onClick={nextOfferSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#e91e63] transition-all flex items-center justify-center text-xl group"><span className="group-hover:translate-x-0.5 transition-transform">&gt;</span></button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                    {activeOffers.slice(offerSlideIndex, offerSlideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`offer-${item.id}-${idx}`} item={item} isOffer={true} />)}
+                    {categoryOffers.slice(offerSlideIndex, offerSlideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`offer-${item.id}-${idx}`} item={item} />)}
                 </div>
             </div>
         )}
@@ -287,7 +364,7 @@ export default function ShopPage() {
                 </div>
                 {isLoadingProducts ? <p className="text-sm text-center text-white/70">Loading masterpieces...</p> : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                        {categoryNewArrivals.slice(slideIndex, slideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`new-${item.id || item.productid || item.itemid}-${idx}`} item={item} isNew={true} />)}
+                        {categoryNewArrivals.slice(slideIndex, slideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`new-${item.id || item.productid || item.itemid}-${idx}`} item={item} />)}
                     </div>
                 )}
             </div>
@@ -308,12 +385,19 @@ export default function ShopPage() {
         </div>
       </main>
 
-      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
+      {selectedProduct && (
+          <ProductDetailsModal 
+              product={selectedProduct} 
+              onClose={() => setSelectedProduct(null)} 
+              onAddToCart={handleAddToCart}
+          />
+      )}
+
       {alertState.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up relative">
               <button onClick={dismissAlert} className="absolute top-5 right-5 text-gray-400 hover:text-[#880e4f] transition-colors p-2 text-xl leading-none" aria-label="Close">✕</button>
-              <div className="w-16 h-16 bg-[#FCE4EC] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0]">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0] ${alertState.type === 'success' ? 'bg-[#FCE4EC]' : 'bg-[#FFF9C4]'}`}>
                 {alertState.type === 'success' ? '🛍️' : '⚠️'}
               </div>
               <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>

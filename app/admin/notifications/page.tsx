@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AdminHeader from '@/components/AdminHeader'; // Imported your new Admin Header!
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -101,13 +102,8 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
       
-      {/* --- ADMIN HEADER --- */}
-      <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white py-4 px-8 flex justify-between items-center shadow-lg sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-           <button onClick={() => router.push('/admin/dashboard')} className="text-xl hover:bg-white/10 p-2 rounded-full transition">←</button>
-           <h1 className="text-xl font-bold tracking-wider text-[#F3E5F5] uppercase">Notifications</h1>
-        </div>
-      </header>
+      {/* --- REPLACED WITH YOUR NEW ADMIN HEADER --- */}
+      <AdminHeader />
 
       <main className="container mx-auto px-6 py-8 max-w-5xl relative z-10">
         

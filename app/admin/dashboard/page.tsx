@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AdminHeader from '@/components/AdminHeader';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -72,13 +73,6 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    window.location.href = '/'; 
-  };
-
   const handleAddAdmin = () => {
     alert("Redirecting to Add New Admin page...");
   };
@@ -95,6 +89,14 @@ export default function AdminDashboard() {
         needsAttention: pendingOrders > 0 
     },
     { title: "Manage Offers", desc: "Create discount codes, sale banners, and promos.", icon: "🏷️", path: "/admin/manage-offers" },
+    { 
+        title: "Support Hub", 
+        desc: "Manage reviews, returns, and complaints.", 
+        icon: "💬", 
+        path: "/admin/support", 
+        badge: null,
+        needsAttention: false
+    },
     { 
         title: "Notifications", 
         desc: "Check system alerts and stock warnings.", 
@@ -116,18 +118,8 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#2E1029]">
       
-      {/* --- CUSTOM ADMIN HEADER --- */}
-      <header className="bg-gradient-to-r from-[#2E1029] to-[#4A1D46] text-white px-8 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50 border-b border-[#D883B7]/30">
-        <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/90 overflow-hidden border-2 border-[#D883B7] shadow-md">
-                <img src="/logo.jpeg" alt="Logo" className="w-full h-full object-cover" />
-            </div>
-            <span className="font-serif font-bold text-lg tracking-wide text-[#F3E5F5] hidden md:block">NORMA BEAUTI</span>
-        </div>
-        <button onClick={handleLogout} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-6 py-2 rounded-full font-bold text-xs hover:opacity-90 transition shadow-md border border-white/20 tracking-wider">
-            LOGOUT
-        </button>
-      </header>
+      {/* --- REPLACED WITH YOUR NEW ADMIN HEADER --- */}
+      <AdminHeader />
 
       {/* Decorative Background Glows */}
       <div className="fixed top-20 left-0 w-96 h-96 bg-[#D883B7]/20 rounded-full blur-[120px] pointer-events-none"></div>

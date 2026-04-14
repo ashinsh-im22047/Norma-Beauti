@@ -9,67 +9,52 @@ export default function PaymentPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false); 
+  const [deliveryDays, setDeliveryDays] = useState({ min: 3, max: 5 });
   
-  // FORM STATE
-  const [details, setDetails] = useState({ 
-    name: '', 
-    address: '', 
-    phone: '' 
-  });
-  
+  const [details, setDetails] = useState({ name: '', address: '', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Slip'>('COD');
   const [slipFile, setSlipFile] = useState<string | null>(null);
 
-  // --- CUSTOM ALERT STATE ---
   const [alertState, setAlertState] = useState({ 
-    show: false, 
-    type: 'success',
-    title: '', 
-    message: '',
-    redirect: ''
+    show: false, type: 'success', title: '', message: '', redirect: ''
   });
 
   const closeAlert = () => {
     setAlertState(prev => ({ ...prev, show: false }));
-    if (alertState.redirect) {
-        router.push(alertState.redirect);
-    }
+    if (alertState.redirect) router.push(alertState.redirect);
   };
 
   useEffect(() => {
     const storedItems = localStorage.getItem('checkoutItems');
-    if (storedItems) {
-        setItems(JSON.parse(storedItems));
-    } else {
-        router.push('/cart');
-    }
+    if (storedItems) setItems(JSON.parse(storedItems));
+    else router.push('/cart');
 
-    const fetchProfileData = async () => {
-      try {
-        const res = await fetch('/api/profile');
-        if (res.ok) {
-           const data = await res.json();
-           setDetails({
-             name: data.name || '',
-             address: data.address || '',
-             phone: data.phone || '' 
-           });
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      }
-    };
+    fetch('/api/profile')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+            if (data) setDetails({ name: data.name || '', address: data.address || '', phone: data.phone || '' });
+        }).catch(err => console.error(err));
     
-    fetchProfileData();
+    fetch('/api/settings')
+        .then(res => res.json())
+        .then(data => {
+            if (data.min_delivery_days !== undefined) setDeliveryDays({ min: data.min_delivery_days, max: data.max_delivery_days });
+        }).catch(err => console.error(err));
+
   }, [router]);
+
+  const getDeliveryDates = () => {
+    const today = new Date();
+    const start = new Date(today); start.setDate(today.getDate() + deliveryDays.min);
+    const end = new Date(today); end.setDate(today.getDate() + deliveryDays.max);
+    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    return `${start.toLocaleDateString(undefined, options)} - ${end.toLocaleDateString(undefined, options)}`;
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const numbersOnly = val.replace(/[^0-9]/g, '');
-    
-    if (numbersOnly.length <= 9) {
-        setDetails({ ...details, phone: `+94${numbersOnly}` });
-    }
+    if (numbersOnly.length <= 9) setDetails({ ...details, phone: `+94${numbersOnly}` });
   };
 
   const getPhoneDigits = () => {
@@ -89,35 +74,11 @@ export default function PaymentPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!details.name.trim()) {
-        setAlertState({
-            show: true, type: 'error', title: 'Missing Information', 
-            message: 'Name is required. Please fill in your name.', redirect: ''
-        });
-        return;
-    }
-    if (!details.address.trim()) {
-        setAlertState({
-            show: true, type: 'error', title: 'Missing Information', 
-            message: 'Address is required. Please fill in your delivery address.', redirect: ''
-        });
-        return;
-    }
+    if (!details.name.trim()) return setAlertState({ show: true, type: 'error', title: 'Missing Info', message: 'Name is required.', redirect: '' });
+    if (!details.address.trim()) return setAlertState({ show: true, type: 'error', title: 'Missing Info', message: 'Address is required.', redirect: '' });
     const phoneDigits = getPhoneDigits();
-    if (phoneDigits.length !== 9) {
-        setAlertState({
-            show: true, type: 'error', title: 'Invalid Phone Number', 
-            message: 'Please enter exactly 9 digits after +94.', redirect: ''
-        });
-        return;
-    }
-    if (paymentMethod === 'Slip' && !slipFile) {
-        setAlertState({
-            show: true, type: 'error', title: 'Payment Slip Required', 
-            message: 'Please upload the bank transfer slip to continue.', redirect: ''
-        });
-        return;
-    }
+    if (phoneDigits.length !== 9) return setAlertState({ show: true, type: 'error', title: 'Invalid Phone', message: 'Please enter exactly 9 digits after +94.', redirect: '' });
+    if (paymentMethod === 'Slip' && !slipFile) return setAlertState({ show: true, type: 'error', title: 'Payment Slip Required', message: 'Please upload the bank transfer slip.', redirect: '' });
 
     setLoading(true);
     const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
@@ -126,34 +87,18 @@ export default function PaymentPage() {
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                items,
-                total,
-                method: paymentMethod,
-                slip: slipFile,
-                details 
-            })
+            body: JSON.stringify({ items, total, method: paymentMethod, slip: slipFile, details })
         });
 
         if (res.ok) {
             localStorage.removeItem('checkoutItems');
-            setAlertState({
-                show: true, type: 'success', title: 'Order Placed! 🎉', 
-                message: 'Your beautiful order has been placed successfully.', 
-                redirect: '/profile/my-orders'
-            });
+            setAlertState({ show: true, type: 'success', title: 'Order Placed! 🎉', message: 'Your order has been placed successfully.', redirect: '/profile/my-orders' });
         } else {
             const err = await res.json();
-            setAlertState({
-                show: true, type: 'error', title: 'Order Failed', 
-                message: err.error || 'Failed to place order. Please try again.', redirect: ''
-            });
+            setAlertState({ show: true, type: 'error', title: 'Order Failed', message: err.error || 'Failed to place order.', redirect: '' });
         }
     } catch (error) { 
-        setAlertState({
-            show: true, type: 'error', title: 'System Error', 
-            message: 'Something went wrong. Please check your connection.', redirect: ''
-        });
+        setAlertState({ show: true, type: 'error', title: 'System Error', message: 'Something went wrong.', redirect: '' });
     } finally { 
         setLoading(false); 
     }
@@ -166,7 +111,6 @@ export default function PaymentPage() {
       <CustomerHeader />
       <main className="container mx-auto px-6 py-8 max-w-7xl">
         
-        {/* --- ELEGANT HERO SECTION --- */}
         <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
@@ -191,67 +135,41 @@ export default function PaymentPage() {
         <div className="w-full max-w-4xl mx-auto bg-white/70 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-white/60">
              <form onSubmit={handlePlaceOrder} className="flex flex-col md:flex-row gap-12">
                 
-                {/* 1. DELIVERY DETAILS */}
                 <div className="flex-1 space-y-6">
                     <div className="flex justify-between items-center border-b pb-4 border-pink-100">
                         <h3 className="text-2xl font-serif font-bold text-[#4A1D46]">1. Delivery</h3>
-                        <button 
-                            type="button" 
-                            onClick={() => setIsEditing(!isEditing)}
-                            className="text-xs font-bold text-[#880e4f] bg-pink-50 hover:bg-[#880e4f] hover:text-white px-4 py-2 rounded-full transition-all border border-pink-200 hover:border-transparent"
-                        >
+                        <button type="button" onClick={() => setIsEditing(!isEditing)} className="text-xs font-bold text-[#880e4f] bg-pink-50 hover:bg-[#880e4f] hover:text-white px-4 py-2 rounded-full transition-all border border-pink-200 hover:border-transparent">
                             {isEditing ? 'Done' : '✎ Edit'}
                         </button>
                     </div>
                     
                     <div>
                         <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Name</label>
-                        <input 
-                            type="text" 
-                            value={details.name} 
-                            readOnly={!isEditing}
-                            onChange={e => setDetails({...details, name: e.target.value})} 
-                            placeholder="Enter your full name"
-                            className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${
-                                isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'
-                            }`} 
-                        />
+                        <input type="text" value={details.name} readOnly={!isEditing} onChange={e => setDetails({...details, name: e.target.value})} placeholder="Enter your full name" className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'}`} />
                     </div>
 
                     <div>
                         <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Address</label>
-                        <input 
-                            type="text" 
-                            value={details.address} 
-                            readOnly={!isEditing}
-                            onChange={e => setDetails({...details, address: e.target.value})} 
-                            placeholder="Enter your address"
-                            className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${
-                                isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'
-                            }`} 
-                        />
+                        <input type="text" value={details.address} readOnly={!isEditing} onChange={e => setDetails({...details, address: e.target.value})} placeholder="Enter your address" className={`w-full p-3.5 rounded-2xl border outline-none font-medium transition-colors ${isEditing ? 'bg-white border-pink-300 text-[#4A1D46] focus:ring-1 focus:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent text-gray-500 cursor-default'}`} />
                     </div>
 
                     <div>
                         <label className="block text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-2">Phone</label>
-                        <div className={`flex items-center w-full p-3.5 rounded-2xl border transition-colors ${
-                                isEditing ? 'bg-white border-pink-300 focus-within:ring-1 focus-within:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent'
-                            }`}>
+                        <div className={`flex items-center w-full p-3.5 rounded-2xl border transition-colors ${isEditing ? 'bg-white border-pink-300 focus-within:ring-1 focus-within:ring-[#9B5DE5] shadow-sm' : 'bg-gray-50 border-transparent'}`}>
                             <span className="text-gray-400 font-bold mr-2 select-none">+94</span>
-                            <input 
-                                type="text" 
-                                value={getPhoneDigits()} 
-                                readOnly={!isEditing}
-                                onChange={handlePhoneChange} 
-                                placeholder="7XXXXXXXX"
-                                maxLength={9}
-                                className={`w-full outline-none bg-transparent font-medium ${isEditing ? 'text-[#4A1D46]' : 'text-gray-500 cursor-default'}`} 
-                            />
+                            <input type="text" value={getPhoneDigits()} readOnly={!isEditing} onChange={handlePhoneChange} placeholder="7XXXXXXXX" maxLength={9} className={`w-full outline-none bg-transparent font-medium ${isEditing ? 'text-[#4A1D46]' : 'text-gray-500 cursor-default'}`} />
+                        </div>
+                    </div>
+
+                    <div className="mt-6 bg-[#F3E5F5] p-5 rounded-2xl border border-pink-100 flex items-center gap-4 shadow-sm">
+                        <div className="text-3xl">🚚</div>
+                        <div>
+                            <p className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest">Estimated Delivery</p>
+                            <p className="text-sm font-bold text-[#4A1D46]">{getDeliveryDates()}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* 2. PAYMENT METHOD */}
                 <div className="flex-1 space-y-6 flex flex-col">
                     <div className="border-b pb-4 border-pink-100">
                         <h3 className="text-2xl font-serif font-bold text-[#4A1D46]">2. Payment</h3>
@@ -296,7 +214,6 @@ export default function PaymentPage() {
         </div>
       </main>
 
-      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
       {alertState.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
@@ -305,10 +222,7 @@ export default function PaymentPage() {
               </div>
               <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
               <p className="text-[#7B2C62] mb-8 font-medium text-sm">{alertState.message}</p>
-              <button 
-                onClick={closeAlert}
-                className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full border border-white/20 ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5]' : 'bg-gray-800'}`}
-              >
+              <button onClick={closeAlert} className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full border border-white/20 ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5]' : 'bg-gray-800'}`}>
                 {alertState.type === 'success' ? 'Continue' : 'Close'}
               </button>
            </div>
