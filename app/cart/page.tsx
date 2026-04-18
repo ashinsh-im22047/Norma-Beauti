@@ -112,31 +112,30 @@ export default function CartPage() {
   const total = cartItems.filter(item => selectedItems.has(item.id)).reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46] pb-20">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
       <CustomerHeader />
       
-      <main className="container mx-auto px-6 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 md:px-6 py-10 max-w-[1400px]">
         
         {/* --- ELEGANT CUSTOMER HERO SECTION --- */}
-        <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
+        <div className="bg-white rounded-[2.5rem] p-10 md:p-12 shadow-sm border border-slate-200 mb-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#fff5f4] to-transparent rounded-bl-full pointer-events-none opacity-70 group-hover:scale-110 transition-transform duration-700"></div>
             
             <div className="relative z-10 text-center md:text-left">
-                <div className="inline-block bg-white/10 px-5 py-1.5 rounded-full border border-white/20 text-xs font-bold tracking-widest uppercase mb-4 text-[#F3E5F5] shadow-inner">
+                <div className="inline-block bg-[#fff5f4] px-5 py-1.5 rounded-full border border-[#FFAFA8]/30 text-xs font-bold tracking-widest uppercase mb-4 text-[#ff8a80] shadow-sm">
                     Checkout Ready
                 </div>
-                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wide mb-3">Your Cart</h1>
-                <p className="text-[#D883B7] font-medium text-lg max-w-md mx-auto md:mx-0">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-3 text-slate-900">Your Cart</h1>
+                <p className="text-slate-500 font-medium text-lg max-w-md mx-auto md:mx-0">
                     Review your items and proceed to secure payment.
                 </p>
             </div>
             
             <div className="relative z-10 flex items-center justify-center shrink-0">
-                <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-4xl shadow-inner border border-white/20 relative group hover:scale-105 transition-transform duration-500">
-                    <span className="animate-pulse drop-shadow-[0_0_15px_rgba(216,131,183,0.6)]">🛒</span>
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 shadow-inner border border-slate-100 relative group hover:bg-white hover:shadow-md hover:border-[#FFAFA8] transition-all duration-300">
+                    <svg className="w-10 h-10 group-hover:text-[#ff8a80] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     {cartItems.length > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full shadow-lg border border-white/20">
+                        <div className="absolute -top-1 -right-1 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full shadow-md border-2 border-white animate-bounce">
                             {cartItems.length}
                         </div>
                     )}
@@ -145,11 +144,13 @@ export default function CartPage() {
         </div>
 
         {cartItems.length === 0 ? (
-           <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-lg border border-white/60 p-16 text-center max-w-2xl mx-auto">
-             <div className="text-6xl mb-4 opacity-70">✨</div>
-             <p className="text-2xl font-serif font-bold text-[#880e4f] mb-2">Your cart is empty.</p>
-             <p className="text-[#7B2C62] mb-8 font-medium">Looks like you haven't added any items yet!</p>
-             <button onClick={() => router.push('/shop')} className="px-8 py-3 bg-gradient-to-r from-[#880e4f] to-[#ad1457] text-white rounded-full font-bold shadow-lg hover:scale-105 hover:shadow-pink-300 transition-all border border-white/20">
+           <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 p-16 text-center max-w-2xl mx-auto flex flex-col items-center justify-center">
+             <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100 text-slate-300">
+                 <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+             </div>
+             <p className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Your cart is empty.</p>
+             <p className="text-slate-500 mb-8 font-medium">Looks like you haven't added any items yet!</p>
+             <button onClick={() => router.push('/shop')} className="px-10 py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md hover:scale-105 hover:shadow-lg transition-all tracking-wide">
                  Go to Shop
              </button>
            </div>
@@ -157,64 +158,82 @@ export default function CartPage() {
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="flex-grow space-y-4">
               {cartItems.map((item) => (
-                <div key={`${item.type}-${item.id}`} className="flex flex-col sm:flex-row items-center gap-4 bg-white/70 backdrop-blur-md p-5 rounded-[1.5rem] shadow-sm border border-white/50 hover:shadow-md transition-shadow group relative">
+                <div key={`${item.type}-${item.id}`} className="flex flex-col sm:flex-row items-center gap-6 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 hover:shadow-md hover:border-[#FFAFA8] transition-all group relative">
                   
-                  <div className="flex w-full sm:w-auto items-center gap-4">
-                      <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleSelection(item.id)} className="w-5 h-5 accent-[#880e4f] cursor-pointer shrink-0" />
+                  <div className="flex w-full sm:w-auto items-center gap-5">
+                      <div className="relative flex items-center justify-center shrink-0">
+                          <input 
+                              type="checkbox" 
+                              checked={selectedItems.has(item.id)} 
+                              onChange={() => toggleSelection(item.id)} 
+                              className="peer appearance-none w-6 h-6 border-2 border-slate-300 rounded-md checked:bg-[#FFAFA8] checked:border-[#FFAFA8] transition-all cursor-pointer shadow-sm"
+                          />
+                          <svg className="absolute w-4 h-4 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                      </div>
                       
-                      <div className="w-20 h-20 rounded-xl bg-gray-50 flex shrink-0 items-center justify-center overflow-hidden border border-white/50 shadow-sm relative">
+                      <div className="w-24 h-24 rounded-2xl bg-slate-50 flex shrink-0 items-center justify-center overflow-hidden border border-slate-100 shadow-inner relative">
                           {item.image ? (
                               <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.name} />
                           ) : (
-                              <span className="text-2xl opacity-50">📷</span>
+                              <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                           )}
                       </div>
                   </div>
 
                   <div className="flex-grow min-w-0 w-full text-center sm:text-left">
-                    <h3 className="font-bold text-[#880e4f] text-lg leading-tight truncate">{item.name}</h3>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1 mb-2">{item.type}</p>
+                    <h3 className="font-bold text-slate-900 text-xl leading-tight truncate group-hover:text-[#ff8a80] transition-colors">{item.name}</h3>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 mb-2">{item.type}</p>
                     
                     {/* --- NEW: THE BOGO FREE ITEM TAG --- */}
                     {item.freeQty > 0 && (
-                        <div className="inline-block bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold shadow-sm mb-2 animate-fade-in">
-                            🎁 +{item.freeQty} Free Item{item.freeQty > 1 ? 's' : ''} Included!
+                        <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-600 px-3 py-1 rounded-lg text-xs font-bold shadow-sm mb-3">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>
+                            +{item.freeQty} Free Item{item.freeQty > 1 ? 's' : ''} Included!
                         </div>
                     )}
 
-                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                    <div className="flex items-center justify-center sm:justify-start gap-2.5 mt-1">
                         {item.badgeText && item.originalPrice !== item.price && (
-                            <span className="text-xs text-gray-400 line-through">LKR {parseFloat(item.originalPrice).toLocaleString()}</span>
+                            <span className="text-xs font-bold text-slate-400 line-through">LKR {parseFloat(item.originalPrice).toLocaleString()}</span>
                         )}
-                        <p className="font-bold text-[#c2185b] text-lg">LKR {parseFloat(item.price).toLocaleString()}</p>
+                        <p className="font-bold text-slate-800 text-xl">LKR {parseFloat(item.price).toLocaleString()}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-4 w-full sm:w-auto justify-center">
-                      <div className="flex items-center bg-white rounded-full border border-pink-100 shadow-sm p-1 shrink-0">
-                        <button onClick={() => updateQuantity(item, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">-</button>
-                        <span className="font-bold w-8 text-center text-sm text-[#4a1d46]">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center font-bold text-gray-500 hover:text-[#880e4f] hover:bg-pink-50 rounded-full transition-colors">+</button>
+                      <div className="flex items-center bg-slate-50 rounded-full border border-slate-200 shadow-sm p-1 shrink-0">
+                        <button onClick={() => updateQuantity(item, item.quantity - 1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-500 hover:text-[#ff8a80] hover:bg-white rounded-full transition-colors">-</button>
+                        <span className="font-bold w-10 text-center text-sm text-slate-800">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item, item.quantity + 1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-500 hover:text-[#ff8a80] hover:bg-white rounded-full transition-colors">+</button>
                       </div>
                       
-                      <button onClick={() => openDeleteDialog(item.id, item.type, item.name)} className="w-10 h-10 flex shrink-0 items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 rounded-full transition-all shadow-sm" title="Remove Item">✕</button>
+                      <button 
+                        onClick={() => openDeleteDialog(item.id, item.type, item.name)} 
+                        className="w-10 h-10 flex shrink-0 items-center justify-center text-slate-400 bg-white border border-slate-200 hover:border-rose-200 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all shadow-sm" 
+                        title="Remove Item"
+                      >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                   </div>
                 </div>
               ))}
             </div>
             
             <div className="w-full lg:w-80 shrink-0">
-              <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl text-center border border-white/60 sticky top-28">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Order Total</p>
-                <h3 className="text-3xl font-bold text-[#880e4f] mb-8">LKR {total.toLocaleString()}</h3>
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 sticky top-28 flex flex-col items-center">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Order Total</p>
+                <h3 className="text-4xl font-bold text-slate-900 mb-8 tracking-tight">LKR {total.toLocaleString()}</h3>
                 
+                <div className="w-full h-px bg-slate-100 mb-8"></div>
+
                 <button 
                     onClick={handleCheckout} 
                     disabled={total === 0} 
-                    className={`w-full py-4 rounded-full font-bold text-white shadow-lg transition-all border border-white/20
-                        ${total > 0 ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] hover:opacity-90 hover:scale-105' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                    className={`w-full py-4 rounded-full font-bold shadow-md tracking-wide transition-all border border-transparent flex items-center justify-center gap-2
+                        ${total > 0 ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                 >
                     Proceed to Payment
+                    {total > 0 && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>}
                 </button>
               </div>
             </div>
@@ -225,14 +244,20 @@ export default function CartPage() {
 
       {/* --- CONFIRMATION DIALOG --- */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60">
-              <div className="w-16 h-16 bg-[#FFEBEE] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#FFCDD2] text-red-500">🗑️</div>
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">Remove Item?</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium text-sm">Are you sure you want to remove <br/><span className="font-bold text-[#880e4f] text-base">"{confirmDialog.itemName}"</span> <br/>from your cart?</p>
-              <div className="flex gap-3">
-                <button onClick={cancelDelete} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Cancel</button>
-                <button onClick={confirmDelete} className="flex-1 py-3 bg-gradient-to-r from-[#e53935] to-[#d32f2f] text-white rounded-xl font-bold shadow-lg hover:shadow-red-200 hover:scale-105 transition-all">Yes, Remove</button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 transform transition-all scale-100">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white text-rose-500">
+                  <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-slate-900 tracking-tight">Remove Item?</h3>
+              <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">
+                  Are you sure you want to remove <br/>
+                  <span className="font-bold text-[#ff8a80] text-base">"{confirmDialog.itemName}"</span> <br/>
+                  from your cart?
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button onClick={cancelDelete} className="px-6 py-3 bg-white text-slate-600 border border-slate-200 rounded-full font-bold hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm">Cancel</button>
+                <button onClick={confirmDelete} className="px-6 py-3 bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-full font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all tracking-wide">Yes, Remove</button>
               </div>
            </div>
         </div>
@@ -240,15 +265,17 @@ export default function CartPage() {
 
       {/* --- CUSTOM ALERT DIALOG --- */}
       {alertState.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 relative">
-              <button onClick={closeAlert} className="absolute top-5 right-5 text-gray-400 hover:text-[#880e4f] transition-colors p-2 text-xl leading-none" aria-label="Close">✕</button>
-              <div className="w-16 h-16 bg-[#FFF9C4] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#FFF59D] text-yellow-600">
-                ⚠️
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 relative transform transition-all scale-100">
+              <button onClick={closeAlert} className="absolute top-6 right-6 text-slate-400 hover:text-rose-500 bg-slate-50 w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm" aria-label="Close">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white text-amber-500">
+                  <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
               </div>
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium text-sm">{alertState.message}</p>
-              <button onClick={closeAlert} className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full border border-white/20">
+              <h3 className="text-2xl font-bold mb-3 text-slate-900 tracking-tight">{alertState.title}</h3>
+              <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">{alertState.message}</p>
+              <button onClick={closeAlert} className="px-10 py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all w-full tracking-wide">
                 OK
               </button>
            </div>

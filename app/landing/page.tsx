@@ -69,7 +69,7 @@ export default function LandingPage() {
 
         {/* Description */}
         <p className="text-gray-800 text-sm md:text-lg max-w-xl font-light tracking-wide leading-relaxed">
-          Discover our exclusive collection of premium cosmetics and jewelry designed for the modern muse.
+          Discover our exclusive collection of premium cosmetics, jewelry and beauti item designed for the modern muse.
         </p>
 
       </div>

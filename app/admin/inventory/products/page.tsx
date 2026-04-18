@@ -11,7 +11,6 @@ type ProductVariant = { combo: string[]; price: string; quantity: string };
 type SelectedProduct = { id: string; qty: number }; 
 
 // --- BUG FIX: SAFE JSON PARSER ---
-// Safely converts stringified JSON from the database back into real JavaScript Arrays
 const safeParseArray = (data: any) => {
     if (Array.isArray(data)) return data;
     if (typeof data === 'string') {
@@ -73,7 +72,7 @@ function ProductListContent() {
   const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => { setAlertState({ show: true, title, message, type }); };
   const closeAlert = () => setAlertState({ ...alertState, show: false });
 
-  // --- BUG FIX: BULLETPROOF REVIEW FETCHER ---
+  // --- BULLETPROOF REVIEW FETCHER ---
   useEffect(() => {
     const fetchAllReviews = async () => {
         const possibleEndpoints = ['/api/product_reviews', '/api/reviews', '/api/admin/reviews', '/api/support/reviews'];
@@ -86,31 +85,25 @@ function ProductListContent() {
                     const reviewsArray = Array.isArray(data) ? data : (data.reviews || data.data || []);
                     if (Array.isArray(reviewsArray) && reviewsArray.length > 0) {
                         setGlobalReviews(reviewsArray);
-                        console.log(`✅ Loaded ${reviewsArray.length} reviews from ${endpoint}`);
                         found = true;
                         break; 
                     }
                 }
             } catch (e) { /* Check next endpoint */ }
         }
-        if (!found) console.warn("⚠️ No reviews found in background fetch. Ensure you have a GET endpoint for the product_reviews table.");
     };
     fetchAllReviews();
   }, []);
 
   const getReviewsForProduct = (cardId: string) => {
       if (!cardId) return [];
-      const normalizedCardId = String(cardId).toLowerCase(); // Normalize target ID
+      const normalizedCardId = String(cardId).toLowerCase(); 
       
       return globalReviews.filter(r => {
-          // Normalize database IDs (handles PROD_ vs prod_)
           const dbProductId = String(r.productid || r.productId || '').toLowerCase();
           const dbItemId = String(r.itemid || r.itemId || '').toLowerCase();
           const matchId = (dbProductId === normalizedCardId) || (dbItemId === normalizedCardId);
-          
-          // Ensure review is not hidden (handles SQL tinyint 0 or string '0')
           const isNotHidden = r.is_hidden == 0 || r.is_hidden === false || r.is_hidden == null;
-          
           return matchId && isNotHidden;
       });
   };
@@ -147,13 +140,11 @@ function ProductListContent() {
       });
   }, [JSON.stringify(formData.features.map(f => ({ n: f.name, v: f.values.map(val => val.name) })))]);
 
-
   const fetchData = async () => {
     setIsLoading(true);
     try {
         const res = await fetch(`/api/inventory-items?categoryId=${categoryId}`, { cache: 'no-store' });
         const data = await res.json();
-        // Use safeParseArray to guarantee arrays instead of strings
         setItems(data.map((item: any) => ({ 
             ...item, 
             variants: safeParseArray(item.variants), 
@@ -167,7 +158,6 @@ function ProductListContent() {
         const res = await fetch('/api/inventory-items');
         if (res.ok) {
             const data = await res.json();
-            // Use safeParseArray to guarantee arrays instead of strings
             setAvailableProducts(data.map((item: any) => ({
                 ...item,
                 variants: safeParseArray(item.variants),
@@ -355,15 +345,19 @@ function ProductListContent() {
   const renderStars = (rating: number) => {
       const fullStars = Math.floor(rating);
       const hasHalfStar = rating % 1 !== 0;
-      if (rating === 0) return <span className="text-gray-500 text-xs italic">No ratings yet</span>;
-      return (
-          <span className="text-[#F59E0B] text-lg tracking-widest">
-              {'★'.repeat(fullStars)}{hasHalfStar ? '⯨' : ''}{'☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0))}
-          </span>
-      );
+      if (rating === 0) return <span className="text-slate-400 text-xs font-medium">No ratings yet</span>;
+      
+      const stars = [];
+      for (let i = 0; i < 5; i++) {
+          if (i < fullStars) {
+              stars.push(<svg key={i} className="w-4 h-4 text-amber-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
+          } else {
+              stars.push(<svg key={i} className="w-4 h-4 text-slate-200 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
+          }
+      }
+      return <div className="flex gap-0.5 items-center">{stars}</div>;
   };
 
-  // --- NEW BUG FIX: DEDICATED REVIEW LOADER COMPONENT ---
   const ReviewLoader = ({ item, onClick }: { item: any, onClick: (reviews: any[]) => void }) => {
       const [reviews, setReviews] = useState<any[]>([]);
 
@@ -382,9 +376,7 @@ function ProductListContent() {
                   if (res.ok) {
                       setReviews(await res.json());
                   }
-              } catch (err) {
-                  console.error("Failed to fetch reviews for card", err);
-              }
+              } catch (err) { }
           };
           fetchReviews();
       }, [item]);
@@ -393,9 +385,9 @@ function ProductListContent() {
       const reviewCount = reviews.length;
 
       return (
-          <div className="flex items-center gap-1 mb-4" onClick={(e) => { e.stopPropagation(); onClick(reviews); }}>
+          <div className="flex items-center gap-2 mb-4" onClick={(e) => { e.stopPropagation(); onClick(reviews); }}>
               {renderStars(avgRating)}
-              {reviewCount > 0 && <span className="text-[10px] text-gray-400 ml-1">({reviewCount} Reviews)</span>}
+              {reviewCount > 0 && <span className="text-[11px] text-slate-500 font-medium">({reviewCount} Reviews)</span>}
           </div>
       );
   };
@@ -409,20 +401,15 @@ function ProductListContent() {
     const safeVariants = safeParseArray(item.variants);
     const totalQty = safeVariants.length > 0 ? safeVariants.reduce((sum: number, v: any) => sum + parseInt(v.quantity || 0), 0) : item.quantity;
     
-    // --- NEW: Calculate "Starting from" Price for Card ---
     let displayPriceText = `LKR ${parseFloat(item.price || 0).toLocaleString()}`;
     if (safeVariants.length > 0) {
-        const validPrices = safeVariants
-            .map((v: any) => parseFloat(v.price))
-            .filter((p: number) => !isNaN(p) && p > 0);
-        
+        const validPrices = safeVariants.map((v: any) => parseFloat(v.price)).filter((p: number) => !isNaN(p) && p > 0);
         if (validPrices.length > 0) {
             const lowestVariantPrice = Math.min(...validPrices);
-            displayPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
+            displayPriceText = `From LKR ${lowestVariantPrice.toLocaleString()}`;
         }
     }
 
-    // We will pass the dynamically loaded reviews up to the modal via this function
     const openPreview = (loadedReviews: any[]) => {
         setPreviewProduct({ ...item, actualReviews: loadedReviews }); 
         setPreviewActiveImage(displayImg);
@@ -431,27 +418,35 @@ function ProductListContent() {
     return (
       <div 
         ref={isHighlighted ? highlightRef : null}
-        className={`group cursor-pointer flex flex-col bg-[#5D2E46]/80 backdrop-blur-md rounded-3xl overflow-hidden border ${isHighlighted ? 'border-red-500 ring-4 ring-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]' : 'border-white/10 hover:border-[#D883B7] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)]'} transition-all duration-300 hover:-translate-y-1 relative`}
+        className={`group cursor-pointer flex flex-col bg-white rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 relative ${isHighlighted ? 'border-[#FFAFA8] ring-4 ring-[#FFAFA8]/30 shadow-lg' : 'border-slate-200 hover:border-[#ff8a80] hover:shadow-xl shadow-sm'}`}
       >
-        <div className="relative h-56 w-full bg-black/20 overflow-hidden" onClick={() => openPreview([])}>
+        <div className="relative h-56 w-full bg-slate-50 overflow-hidden border-b border-slate-100" onClick={() => openPreview([])}>
             {displayImg ? (
                 <img src={displayImg} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
             ) : (
-                <div className="w-full h-full flex items-center justify-center text-5xl">📷</div>
+                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
             )}
             
-            <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${totalQty > (item.minStock || 5) ? 'bg-[#10B981]' : 'bg-red-500 animate-pulse'}`}></span>
-                <span className="text-[10px] font-bold text-white tracking-wider leading-none">{totalQty} IN STOCK</span>
+            <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-2 shadow-sm">
+                <span className={`w-2.5 h-2.5 rounded-full ${totalQty > (item.minStock || 5) ? 'bg-emerald-400' : 'bg-rose-500 animate-pulse'}`}></span>
+                <span className="text-[10px] font-bold text-slate-700 tracking-wider leading-none">{totalQty} IN STOCK</span>
             </div>
 
             {!isPending && (
                 <div className="absolute top-3 right-3">
-                    <button onClick={(e) => { e.stopPropagation(); toggleMenu(e, cardId); }} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/50 hover:bg-[#D883B7] text-white backdrop-blur-md transition-colors border border-white/20">⋮</button>
+                    <button onClick={(e) => { e.stopPropagation(); toggleMenu(e, cardId); }} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 hover:text-[#FFAFA8] hover:border-[#FFAFA8] shadow-sm transition-all">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                    </button>
                     {activeMenuId === cardId && (
-                        <div className="absolute right-0 top-10 bg-[#2E1029]/95 backdrop-blur-xl rounded-xl shadow-xl py-2 w-32 border border-white/20 z-50" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => { setActiveMenuId(null); openEditModal(item); }} className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10">Edit details</button>
-                            <button onClick={() => { setActiveMenuId(null); handleDelete(cardId); }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/10">Delete item</button>
+                        <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg py-2 w-36 border border-slate-100 z-50 overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => { setActiveMenuId(null); openEditModal(item); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 font-medium hover:bg-slate-50 hover:text-blue-500 flex items-center gap-2 transition-colors">
+                                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg> Edit
+                            </button>
+                            <button onClick={() => { setActiveMenuId(null); handleDelete(cardId); }} className="w-full text-left px-4 py-2.5 text-sm text-rose-600 font-medium hover:bg-rose-50 flex items-center gap-2 transition-colors">
+                                <svg className="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg> Delete
+                            </button>
                         </div>
                     )}
                 </div>
@@ -460,25 +455,24 @@ function ProductListContent() {
 
         <div className="p-5 flex flex-col flex-1">
             <div onClick={() => openPreview([])}>
-                <p className="text-[10px] text-[#D883B7] font-mono tracking-widest mb-1.5 uppercase">ID: {cardId}</p>
-                <h3 className="font-bold text-white text-lg leading-tight mb-2 line-clamp-2">{item.name || item.productname || item.itemname}</h3>
+                <p className="text-[10px] text-slate-400 font-mono tracking-widest mb-1.5 uppercase">ID: {cardId}</p>
+                <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2 line-clamp-2 group-hover:text-[#ff8a80] transition-colors">{item.name || item.productname || item.itemname}</h3>
             </div>
             
-            {/* Load and display reviews dynamically per card */}
             <ReviewLoader item={item} onClick={openPreview} />
 
             <div className="mt-auto flex items-end justify-between" onClick={() => openPreview([])}>
                 <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-0.5">Price</p>
-                    <p className="font-bold text-white text-xl">{displayPriceText}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 font-bold">Price</p>
+                    <p className="font-bold text-slate-900 text-xl">{displayPriceText}</p>
                 </div>
                 {isPending && (
                     <div className="flex gap-2" onClick={e=>e.stopPropagation()}>
-                        <button onClick={(e) => handleApproval(e, cardId, 'approved')} className="bg-[#10B981] text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-emerald-400 transition-colors">Approve</button>
+                        <button onClick={(e) => handleApproval(e, cardId, 'approved')} className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:scale-105 transition-transform">Approve</button>
                     </div>
                 )}
                 {!isPending && safeVariants.length > 0 && (
-                    <span className="text-[10px] bg-[#D883B7]/20 text-[#D883B7] border border-[#D883B7]/50 px-2 py-1 rounded-md font-bold">{safeVariants.length} Options</span>
+                    <span className="text-[10px] bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-md font-bold shadow-sm">{safeVariants.length} Options</span>
                 )}
             </div>
         </div>
@@ -486,36 +480,39 @@ function ProductListContent() {
     );
   };
 
-  // --- NEW: Calculate "Starting from" Price for Modal Preview ---
   let previewPriceText = '';
   if (previewProduct) {
       const safePreviewVariants = safeParseArray(previewProduct.variants);
       previewPriceText = `LKR ${parseFloat(previewProduct.price || 0).toLocaleString()}`;
-      
       if (safePreviewVariants.length > 0) {
-          const validPrices = safePreviewVariants
-              .map((v: any) => parseFloat(v.price))
-              .filter((p: number) => !isNaN(p) && p > 0);
-          
+          const validPrices = safePreviewVariants.map((v: any) => parseFloat(v.price)).filter((p: number) => !isNaN(p) && p > 0);
           if (validPrices.length > 0) {
-              const lowestVariantPrice = Math.min(...validPrices);
-              previewPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
+              previewPriceText = `Starting from LKR ${Math.min(...validPrices).toLocaleString()}`;
           }
       }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-[#fff5f4] font-sans pb-20 text-slate-800">
       <AdminHeader />
       <main className="container mx-auto px-4 md:px-6 py-8 relative z-10 max-w-[1400px]">
         
-        <div className="bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-6 md:p-8 shadow-2xl border border-white/20 mb-8 text-white">
+        <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100 mb-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div><h2 className="text-3xl md:text-4xl font-serif tracking-wide">{pageTitle}</h2><p className="text-sm text-[#D883B7] mt-1 font-medium">Manage your beautiful catalog.</p></div>
+                <div>
+                    <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-800">{pageTitle}</h2>
+                    <p className="text-sm text-slate-500 mt-2 font-medium">Manage your beautiful catalog items.</p>
+                </div>
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <div className="relative flex-1 md:flex-none"><span className="absolute left-3 top-2.5 text-[#4A1D46]">🔍</span><input type="text" placeholder="Search catalog..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] shadow-inner"/></div>
-                    <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="py-2 px-3 rounded-xl bg-[#F3E5F5] text-[#2E1029] font-medium text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D883B7] shadow-sm"><option value="newest">Newest First</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="qty">Quantity: Lowest</option></select>
-                    <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] px-6 py-2 rounded-xl shadow-lg font-bold hover:scale-105 transition-all flex items-center gap-2 border border-white/20 text-sm leading-none"><span className="text-xl">+</span> Add New</button>
+                    <div className="relative flex-1 md:flex-none">
+                        <svg className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        <input type="text" placeholder="Search catalog..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-50 border border-slate-200 text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] placeholder-slate-400 transition-all"/>
+                    </div>
+                    <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="py-2.5 px-4 rounded-full bg-slate-50 border border-slate-200 text-slate-700 font-medium text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] transition-all"><option value="newest">Newest First</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="qty">Quantity: Lowest</option></select>
+                    <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-6 py-2.5 rounded-full shadow-md font-bold hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 text-sm">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                        Add New
+                    </button>
                 </div>
             </div>
         </div>
@@ -525,19 +522,25 @@ function ProductListContent() {
                 <div className="flex flex-col gap-10">
                     {pending.length > 0 && (
                         <div>
-                            <h3 className="text-[#4A1D46] font-bold text-xl mb-4 pl-2 flex items-center gap-2">⏳ Pending Approval <span className="text-xs bg-[#F59E0B] px-2 py-0.5 rounded-full text-white shadow-sm">{pending.length}</span></h3>
+                            <h3 className="text-slate-800 font-bold text-xl mb-4 pl-2 flex items-center gap-2">
+                                <svg className="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Pending Approval <span className="text-xs bg-gradient-to-r from-amber-400 to-orange-400 text-white px-2.5 py-0.5 rounded-full shadow-sm font-bold ml-2">{pending.length}</span>
+                            </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">{pending.map(item => <ProductCard key={item.id || item.productid} item={item} isPending={true} />)}</div>
                         </div>
                     )}
                     <div>
-                        <h3 className="text-[#4A1D46] font-bold text-xl mb-4 pl-2">✅ Available Products</h3>
-                        {approved.length === 0 && <p className="text-[#7B2C62] italic p-8 text-center opacity-70 bg-white/40 rounded-2xl">No approved products.</p>}
+                        <h3 className="text-slate-800 font-bold text-xl mb-4 pl-2 flex items-center gap-2">
+                            <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            Available Products
+                        </h3>
+                        {approved.length === 0 && <p className="text-slate-500 italic p-8 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">No approved products.</p>}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">{approved.map(item => <ProductCard key={item.id || item.productid} item={item} />)}</div>
                     </div>
                 </div>
             ) : (
                 <>
-                    {standard.length === 0 && <p className="text-[#7B2C62] italic p-8 text-center opacity-70 bg-white/40 rounded-2xl">No items found in your catalog.</p>}
+                    {standard.length === 0 && <p className="text-slate-500 italic p-8 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">No items found in your catalog.</p>}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">{standard.map(item => <ProductCard key={item.id || item.productid || item.itemid} item={item} />)}</div>
                 </>
             )}
@@ -546,68 +549,102 @@ function ProductListContent() {
 
       {/* --- ADD/EDIT MODAL --- */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex justify-center items-start z-[60] py-10 px-4 overflow-y-auto backdrop-blur-sm" onClick={resetForm}>
-          <div className={`bg-[#2E1029]/95 backdrop-blur-xl w-full ${isReadyMade ? 'max-w-4xl' : 'max-w-lg'} my-auto rounded-[2rem] p-6 md:p-8 shadow-2xl relative border border-white/30 text-white flex flex-col transition-all duration-300`} onClick={e => e.stopPropagation()}>
-            <h2 className="text-2xl font-serif font-bold mb-4 text-center tracking-wide shrink-0">
+        <div className="fixed inset-0 bg-slate-900/50 flex justify-center items-start z-[1000] py-10 px-4 overflow-y-auto backdrop-blur-sm" onClick={resetForm}>
+          <div className={`bg-white w-full ${isReadyMade ? 'max-w-4xl' : 'max-w-lg'} my-auto rounded-[2rem] p-8 md:p-10 shadow-2xl relative border border-slate-100 text-slate-800 flex flex-col transition-all duration-300`} onClick={e => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-8 text-center tracking-tight shrink-0 text-slate-900">
               {isEditing ? 'Edit' : 'Add'} {isReadyMade ? 'Item Details' : 'Product Details'}
             </h2>
             
             <div className={`grid gap-6 overflow-y-auto pr-2 custom-scrollbar flex-1 ${isReadyMade ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                 
-                <div className="flex flex-col gap-4">
-                   <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase tracking-wider">Name</label><input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 outline-none border border-white/20 focus:ring-2 focus:ring-[#D883B7] text-white"/></div>
-                   <div className="flex gap-2">
-                       <div className="flex-1"><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Price</label><input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className={`w-full rounded-full px-3 py-3 border border-white/20 text-center ${formData.variants.length > 0 ? 'bg-black/40 text-gray-400 cursor-not-allowed' : 'bg-white/10 text-white'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/></div>
-                       <div className="flex-1"><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase">Qty</label><input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className={`w-full rounded-full px-3 py-3 border border-white/20 text-center ${formData.variants.length > 0 ? 'bg-black/40 text-gray-400 cursor-not-allowed' : 'bg-white/10 text-white'}`}/></div>
-                       <div className="flex-1"><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label><input type="number" min="0" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-white/10 rounded-full px-3 py-3 border border-white/20 text-white text-center"/></div>
+                <div className="flex flex-col gap-5">
+                   <div>
+                       <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Name</label>
+                       <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 rounded-full px-5 py-3 outline-none border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 transition-all"/>
                    </div>
-                   <div><label className="text-xs font-bold text-[#D883B7] ml-3 uppercase tracking-wider">Description</label><input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-white/10 rounded-full px-5 py-3 border border-white/20 text-white"/></div>
+                   <div className="flex gap-4">
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Price</label>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/>
+                       </div>
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Qty</label>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`}/>
+                       </div>
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label>
+                           <input type="number" min="0" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-slate-50 rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 text-center transition-all"/>
+                       </div>
+                   </div>
+                   <div>
+                       <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Description</label>
+                       <input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-50 rounded-full px-5 py-3 outline-none border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 transition-all"/>
+                   </div>
                    
                    <div>
-                       <label className="text-xs font-bold text-[#D883B7] ml-3 uppercase tracking-wider">Images ({formData.images.length + filesToUpload.length}/5)</label>
+                       <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Images ({formData.images.length + filesToUpload.length}/5)</label>
                        {(formData.images.length > 0 || filesToUpload.length > 0) && (
-                           <div className="flex flex-wrap gap-2 mb-2 bg-black/20 p-3 rounded-2xl border border-white/5">
-                               {formData.images.map((img, i) => (<div key={i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-white/20 group"><img src={img} className="w-full h-full object-cover"/><button onClick={() => removeExistingFile(i)} className="absolute inset-0 bg-red-600/70 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
-                               {filesToUpload.map((file, i) => (<div key={`new_${i}`} className="relative w-14 h-14 rounded-lg overflow-hidden border-2 border-dashed border-[#D883B7]/50 group"><img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-70"/><button onClick={() => removeFileToUpload(i)} className="absolute inset-0 bg-red-600/70 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
+                           <div className="flex flex-wrap gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                               {formData.images.map((img, i) => (<div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group shadow-sm"><img src={img} className="w-full h-full object-cover"/><button onClick={() => removeExistingFile(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
+                               {filesToUpload.map((file, i) => (<div key={`new_${i}`} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-[#FFAFA8] group"><img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-70"/><button onClick={() => removeFileToUpload(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
                            </div>
                        )}
-                       <label className={`w-full h-16 bg-white/10 rounded-2xl flex items-center justify-center border-2 border-dashed border-[#D883B7]/50 text-gray-300 text-sm cursor-pointer transition ${formData.images.length + filesToUpload.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20'}`}>
-                           <input type="file" multiple onChange={handleMainFileChange} className="hidden" accept="image/*" disabled={formData.images.length + filesToUpload.length >= 5}/><span>+ Add Photo</span>
+                       <label className={`w-full h-20 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-[#FFAFA8] text-slate-500 font-medium text-sm cursor-pointer transition ${formData.images.length + filesToUpload.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-[#FFAFA8]'}`}>
+                           <input type="file" multiple onChange={handleMainFileChange} className="hidden" accept="image/*" disabled={formData.images.length + filesToUpload.length >= 5}/>
+                           <span className="flex items-center gap-2">
+                               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                               Add Photo
+                           </span>
                        </label>
                    </div>
 
                    {!isReadyMade && (
-                       <div className="bg-black/20 p-4 rounded-2xl border border-white/10 mt-2">
-                           <div className="flex justify-between items-center mb-3"><label className="text-xs font-bold text-[#D883B7] uppercase tracking-wider">Product Variants</label><button onClick={addFeatureGroup} className="text-[10px] bg-white/10 px-3 py-1 rounded-full font-bold hover:bg-white/20 transition shadow-sm">+ Add Option</button></div>
+                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 mt-4">
+                           <div className="flex justify-between items-center mb-5">
+                               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Variants</label>
+                               <button onClick={addFeatureGroup} className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-full hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white hover:border-transparent transition-all shadow-sm flex items-center gap-1.5">
+                                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg> Add Option
+                               </button>
+                           </div>
                            {formData.features.map((featureGroup, groupIndex) => (
-                               <div key={groupIndex} className="bg-white/5 rounded-xl p-3 border border-white/5 mb-3">
-                                   <div className="flex gap-2 mb-3"><input value={featureGroup.name} onChange={e => updateFeatureGroupName(groupIndex, e.target.value)} placeholder="Option Name (e.g. Colour)" className="flex-1 bg-black/30 rounded-full px-4 py-2 outline-none text-xs text-white border border-white/10 font-bold"/><button onClick={() => removeFeatureGroup(groupIndex)} className="text-xs text-red-400 font-bold px-3 bg-red-500/10 rounded-full hover:bg-red-500/20 transition">✕</button></div>
-                                   <div className="flex flex-col gap-2 pl-2">
+                               <div key={groupIndex} className="bg-white rounded-2xl p-5 border border-slate-200 mb-4 shadow-sm">
+                                   <div className="flex gap-3 mb-5">
+                                       <input value={featureGroup.name} onChange={e => updateFeatureGroupName(groupIndex, e.target.value)} placeholder="Option Name (e.g. Colour)" className="flex-1 bg-slate-50 rounded-full px-5 py-2.5 outline-none text-sm text-slate-800 border border-slate-200 font-bold focus:ring-2 focus:ring-blue-400"/>
+                                       <button onClick={() => removeFeatureGroup(groupIndex)} className="text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white font-bold w-10 h-10 rounded-full transition flex items-center justify-center shadow-sm">
+                                           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                       </button>
+                                   </div>
+                                   <div className="flex flex-col gap-3 pl-3 border-l-2 border-slate-100 ml-2">
                                        {featureGroup.values.map((val, valIndex) => (
-                                           <div key={valIndex} className="flex gap-2 items-center bg-black/20 p-2 rounded-xl border border-white/5">
-                                               <label className="w-10 h-10 rounded-lg border border-dashed border-white/40 flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#D883B7] transition shrink-0 bg-black/40 relative group" title="Upload Feature Image">
-                                                   {val.file ? <img src={URL.createObjectURL(val.file)} className="w-full h-full object-cover" /> : val.image ? <img src={val.image} className="w-full h-full object-cover" /> : <span className="text-[14px] text-white/50">📷</span>}
+                                           <div key={valIndex} className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                               <label className="w-12 h-12 rounded-lg border-2 border-dashed border-[#FFAFA8] flex items-center justify-center overflow-hidden cursor-pointer hover:bg-white transition shrink-0 bg-white relative group shadow-sm" title="Upload Feature Image">
+                                                   {val.file ? <img src={URL.createObjectURL(val.file)} className="w-full h-full object-cover" /> : val.image ? <img src={val.image} className="w-full h-full object-cover" /> : 
+                                                   <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFeatureImageChange(groupIndex, valIndex, e)} />
-                                                   { (val.file || val.image) && <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[8px] text-white font-bold transition">Change</div> }
+                                                   { (val.file || val.image) && <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold transition">Edit</div> }
                                                </label>
-                                               <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Feature Value (e.g. Red)" className="flex-1 bg-transparent px-2 py-1 text-sm text-white outline-none placeholder-white/30 font-medium"/>
-                                               <button onClick={() => removeFeatureValue(groupIndex, valIndex)} className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:text-red-400 hover:bg-red-500/10 transition shrink-0 mr-1">✕</button>
+                                               <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Feature Value (e.g. Red)" className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder-slate-400 font-medium"/>
+                                               <button onClick={() => removeFeatureValue(groupIndex, valIndex)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-slate-400 hover:text-white hover:bg-rose-400 border border-slate-200 transition shrink-0 mr-1 shadow-sm">
+                                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                               </button>
                                            </div>
                                        ))}
-                                       <button onClick={() => addFeatureValue(groupIndex)} className="text-[10px] text-[#D883B7] bg-white/5 px-3 py-1.5 rounded-full hover:bg-white/10 transition self-start mt-1">+ Add Value</button>
+                                       <button onClick={() => addFeatureValue(groupIndex)} className="text-xs font-bold text-blue-500 bg-blue-50 border border-blue-200 px-4 py-2 rounded-full hover:bg-blue-500 hover:text-white transition self-start mt-2 shadow-sm flex items-center gap-1">
+                                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg> Add Value
+                                       </button>
                                    </div>
                                </div>
                            ))}
                            {formData.variants.length > 0 && (
-                               <div className="mt-4 pt-4 border-t border-white/10">
-                                   <label className="text-xs font-bold text-[#D883B7] uppercase tracking-wider mb-3 block">Inventory Matrix</label>
-                                   <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                               <div className="mt-8 pt-6 border-t border-slate-200">
+                                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-5 block">Inventory Matrix</label>
+                                   <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1">
                                        {formData.variants.map((variant, idx) => (
-                                           <div key={idx} className="flex gap-2 items-center bg-black/30 p-2 rounded-xl border border-white/5">
-                                               <div className="flex-1 text-[11px] font-bold text-white pl-2 break-words leading-tight">{variant.combo.join(' / ')}</div>
-                                               <div className="flex flex-col gap-1 w-20 shrink-0">
-                                                   <input type="number" placeholder="Price" value={variant.price} onChange={(e) => updateVariantPrice(idx, e.target.value)} className="w-full bg-white/10 rounded-md px-2 py-1 text-[10px] text-white outline-none border border-transparent focus:border-[#D883B7] text-center" title="Price"/>
-                                                   <input type="number" placeholder="Qty" value={variant.quantity} onChange={(e) => updateVariantQty(idx, e.target.value)} className="w-full bg-white/10 rounded-md px-2 py-1 text-[10px] text-white outline-none border border-transparent focus:border-[#D883B7] text-center" title="Stock"/>
+                                           <div key={idx} className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                               <div className="flex-1 text-sm font-bold text-slate-700 pl-2 break-words leading-tight">{variant.combo.join(' / ')}</div>
+                                               <div className="flex flex-col gap-2 w-28 shrink-0">
+                                                   <input type="number" placeholder="Price" value={variant.price} onChange={(e) => updateVariantPrice(idx, e.target.value)} className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Price"/>
+                                                   <input type="number" placeholder="Qty" value={variant.quantity} onChange={(e) => updateVariantQty(idx, e.target.value)} className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Stock"/>
                                                </div>
                                            </div>
                                        ))}
@@ -619,18 +656,26 @@ function ProductListContent() {
                 </div>
 
                 {isReadyMade && (
-                    <div className="flex flex-col bg-black/20 p-5 rounded-3xl border border-white/10">
+                    <div className="flex flex-col bg-slate-50 p-6 rounded-3xl border border-slate-100">
                         {boxBuilderView === 'checklist' ? (
                             <>
-                                <div className="flex justify-between items-center mb-3">
-                                    <label className="text-xs font-bold text-[#D883B7] uppercase tracking-wider">📦 Box Contents</label>
-                                    <span className="text-[10px] bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] px-3 py-1 rounded-full font-bold shadow-md">{formData.selectedProducts.length} Selected</span>
+                                <div className="flex justify-between items-center mb-5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                        Box Contents
+                                    </label>
+                                    <span className="text-[11px] bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-3.5 py-1.5 rounded-full font-bold shadow-md">
+                                        {formData.selectedProducts.length} Selected
+                                    </span>
                                 </div>
-                                <div className="flex gap-2 mb-4 shrink-0">
-                                    <input type="text" placeholder="Search available products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="flex-1 bg-white/10 rounded-full pl-4 pr-4 py-2 outline-none text-xs text-white placeholder-white/40 border border-white/5 focus:bg-white/20 transition-colors"/>
-                                    <button onClick={() => setBoxBuilderView('newProduct')} className="bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-4 py-2 rounded-full font-bold text-xs hover:scale-105 transition-all shadow-md flex items-center gap-1.5 border border-white/10"><span className="text-sm">+</span> New</button>
+                                <div className="flex gap-3 mb-5 shrink-0">
+                                    <div className="relative flex-1">
+                                        <svg className="w-5 h-5 text-slate-400 absolute left-4 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                        <input type="text" placeholder="Search available products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="w-full bg-white rounded-full pl-11 pr-5 py-3 outline-none text-sm text-slate-800 placeholder-slate-400 border border-slate-200 focus:border-[#FFAFA8] focus:ring-2 focus:ring-[#FFAFA8] transition-all shadow-sm"/>
+                                    </div>
+                                    <button onClick={() => setBoxBuilderView('newProduct')} className="bg-white border border-slate-200 text-slate-700 px-5 py-3 rounded-full font-bold text-sm hover:border-[#FFAFA8] hover:text-[#FFAFA8] hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1.5"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg> New</button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-80 border border-white/5 rounded-xl p-2 bg-[#2E1029]/50 shadow-inner">
+                                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[24rem] bg-white rounded-2xl border border-slate-100 p-3 shadow-inner">
                                     {availableProducts.filter(p => (p.name || p.productname || '').toLowerCase().includes(productSearch.toLowerCase()) || (p.id || p.productid || '').toLowerCase().includes(productSearch.toLowerCase())).map(product => {
                                         const pId = product.id || product.productid;
                                         const selectedItem = formData.selectedProducts.find(sp => sp.id === pId);
@@ -638,45 +683,54 @@ function ProductListContent() {
                                         const displayImg = (product.images && product.images.length > 0) ? product.images[0] : product.image;
 
                                         return (
-                                            <div key={pId} className={`flex items-center justify-between gap-3 p-2 rounded-xl transition-all duration-200 mb-2 border ${isSelected ? 'bg-white/10 border-[#D883B7] shadow-md' : 'border-transparent hover:bg-white/5 hover:border-white/10'}`}>
-                                                <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                                            <div key={pId} className={`flex items-center justify-between gap-4 p-3 rounded-xl transition-all duration-200 mb-3 border ${isSelected ? 'bg-gradient-to-r from-rose-50 to-white border-[#FFAFA8] shadow-md' : 'bg-white border-slate-100 hover:border-slate-300 shadow-sm'}`}>
+                                                <label className="flex items-center gap-4 cursor-pointer flex-1 min-w-0">
                                                     <div className="relative flex items-center justify-center shrink-0">
-                                                        <input type="checkbox" className="peer appearance-none w-5 h-5 border-2 border-white/30 rounded-md checked:bg-[#D883B7] checked:border-[#D883B7] transition-all cursor-pointer shadow-inner" checked={isSelected} onChange={() => toggleProductSelection(pId)}/>
-                                                        <svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                                        <input type="checkbox" className="peer appearance-none w-6 h-6 border-2 border-slate-300 rounded-md checked:bg-[#FFAFA8] checked:border-[#FFAFA8] transition-all cursor-pointer shadow-sm" checked={isSelected} onChange={() => toggleProductSelection(pId)}/>
+                                                        <svg className="absolute w-4 h-4 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
                                                     </div>
-                                                    <div className="w-10 h-10 bg-black/20 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-white/10">
-                                                        {displayImg ? <img src={displayImg} className="w-full h-full object-cover" /> : <span className="text-[10px]">📷</span>}
+                                                    <div className="w-14 h-14 bg-slate-50 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-slate-200">
+                                                        {displayImg ? <img src={displayImg} className="w-full h-full object-cover" /> : <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className={`font-bold text-sm leading-tight truncate transition-colors ${isSelected ? 'text-[#D883B7]' : 'text-white'}`}>{product.name || product.productname}</p>
-                                                        <p className="text-[10px] text-gray-400 mt-0.5">ID: {pId} | <span className="text-[#D883B7] font-medium">LKR {product.price}</span></p>
+                                                        <p className={`font-bold text-sm leading-tight truncate transition-colors ${isSelected ? 'text-[#ff8a80]' : 'text-slate-800'}`}>{product.name || product.productname}</p>
+                                                        <p className="text-[11px] text-slate-500 mt-1 font-medium">ID: {pId} <span className="mx-1.5">•</span> <span className="text-slate-700 font-bold">LKR {product.price}</span></p>
                                                     </div>
                                                 </label>
-                                                <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center gap-3 shrink-0">
                                                     {isSelected && (
-                                                        <input type="number" min="1" value={selectedItem.qty} onChange={(e) => updateSelectedQty(pId, parseInt(e.target.value) || 1)} className="w-12 bg-black/40 rounded-md px-1 py-1 text-xs text-white outline-none border border-white/10 focus:border-[#D883B7] text-center transition-colors" title="Quantity in box" onClick={(e) => e.stopPropagation()} />
+                                                        <input type="number" min="1" value={selectedItem.qty} onChange={(e) => updateSelectedQty(pId, parseInt(e.target.value) || 1)} className="w-16 bg-white rounded-lg px-2 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all shadow-sm" title="Quantity in box" onClick={(e) => e.stopPropagation()} />
                                                     )}
-                                                    <button type="button" onClick={(e) => { e.stopPropagation(); setPreviewProduct({ ...product, actualReviews: getReviewsForProduct(pId) }); setPreviewActiveImage(displayImg); }} className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-[#D883B7] text-white transition-colors border border-white/10" title="Quick View">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                    </button>
                                                 </div>
                                             </div>
                                         );
                                     })}
-                                    {availableProducts.length === 0 && <p className="text-xs text-gray-400 text-center mt-10 italic">No products available.</p>}
+                                    {availableProducts.length === 0 && <p className="text-sm text-slate-500 text-center mt-12 font-medium">No products available.</p>}
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2 pb-2">
-                                <div className="flex justify-between items-center mb-1 shrink-0"><h4 className="text-sm font-bold text-white uppercase tracking-wider">✨ Create New Product</h4><button onClick={() => setBoxBuilderView('checklist')} className="text-[10px] text-[#D883B7] font-bold hover:text-red-400 transition bg-white/10 px-2 py-1 rounded-md">✕ Cancel</button></div>
-                                <input value={nestedProductFormData.name} onChange={e => setNestedProductFormData({...nestedProductFormData, name: e.target.value})} placeholder="New Product Name" className="w-full bg-white/10 rounded-full px-4 py-2.5 outline-none border border-white/20 text-xs text-white shrink-0"/>
-                                <div className="flex gap-2 shrink-0"><input type="number" min="0" placeholder="Price" value={nestedProductFormData.price} onChange={e => setNestedProductFormData({...nestedProductFormData, price: e.target.value})} className="w-1/3 bg-white/10 rounded-full px-4 py-2 border border-white/20 text-xs text-white text-center"/><input type="number" min="0" placeholder="Initial Qty" value={nestedProductFormData.quantity} onChange={e => setNestedProductFormData({...nestedProductFormData, quantity: e.target.value})} className="w-1/3 bg-white/10 rounded-full px-4 py-2 border border-white/20 text-xs text-white text-center"/><input type="number" min="0" placeholder="Min Alert" value={nestedProductFormData.minStock} onChange={e => setNestedProductFormData({...nestedProductFormData, minStock: e.target.value})} className="w-1/3 bg-white/10 rounded-full px-4 py-2 border border-white/20 text-xs text-white text-center"/></div>
-                                <input value={nestedProductFormData.description} onChange={e => setNestedProductFormData({...nestedProductFormData, description: e.target.value})} placeholder="Optional Description" className="w-full bg-white/10 rounded-full px-4 py-2.5 border border-white/20 text-xs text-white shrink-0"/>
-                                <label className="w-full h-16 bg-white/10 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-[#D883B7]/50 text-gray-400 text-xs cursor-pointer hover:bg-white/20 transition shrink-0"><input type="file" multiple onChange={(e) => e.target.files && setNestedProductFormData({...nestedProductFormData, files: [...nestedProductFormData.files, ...Array.from(e.target.files)]})} className="hidden" accept="image/*"/>
-                                    {nestedProductFormData.files.length > 0 ? <span className="text-[#D883B7] font-bold truncate max-w-[80%]">{nestedProductFormData.files.length} Photo(s) Added</span> : <span>Click to upload photo(s)</span>}
+                            <div className="flex flex-col gap-5 overflow-y-auto custom-scrollbar pr-2 pb-2">
+                                <div className="flex justify-between items-center mb-2 shrink-0">
+                                    <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                                        Create New Product
+                                    </h4>
+                                    <button onClick={() => setBoxBuilderView('checklist')} className="text-[11px] text-slate-500 font-bold hover:text-rose-500 transition bg-white border border-slate-200 px-3.5 py-2 rounded-full shadow-sm flex items-center gap-1.5">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg> Cancel
+                                    </button>
+                                </div>
+                                <input value={nestedProductFormData.name} onChange={e => setNestedProductFormData({...nestedProductFormData, name: e.target.value})} placeholder="New Product Name" className="w-full bg-white rounded-full px-5 py-3 outline-none border border-slate-200 text-sm text-slate-800 shrink-0 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                <div className="flex gap-4 shrink-0">
+                                    <input type="number" min="0" placeholder="Price" value={nestedProductFormData.price} onChange={e => setNestedProductFormData({...nestedProductFormData, price: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                    <input type="number" min="0" placeholder="Initial Qty" value={nestedProductFormData.quantity} onChange={e => setNestedProductFormData({...nestedProductFormData, quantity: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                    <input type="number" min="0" placeholder="Min Alert" value={nestedProductFormData.minStock} onChange={e => setNestedProductFormData({...nestedProductFormData, minStock: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                </div>
+                                <input value={nestedProductFormData.description} onChange={e => setNestedProductFormData({...nestedProductFormData, description: e.target.value})} placeholder="Optional Description" className="w-full bg-white rounded-full px-5 py-3 border border-slate-200 text-sm text-slate-800 shrink-0 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                <label className="w-full h-24 bg-white rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-indigo-300 text-slate-500 text-sm cursor-pointer hover:bg-slate-50 transition shrink-0"><input type="file" multiple onChange={(e) => e.target.files && setNestedProductFormData({...nestedProductFormData, files: [...nestedProductFormData.files, ...Array.from(e.target.files)]})} className="hidden" accept="image/*"/>
+                                    {nestedProductFormData.files.length > 0 ? <span className="text-indigo-500 font-bold truncate max-w-[80%]">{nestedProductFormData.files.length} Photo(s) Added</span> : <span className="flex items-center gap-2"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg> Click to upload photo(s)</span>}
                                 </label>
-                                <button onClick={handleNestedProductSave} disabled={isSubmittingNested} className={`bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white py-3 mt-2 rounded-full font-bold text-sm shadow-md transition shrink-0 ${isSubmittingNested ? 'opacity-70 cursor-not-allowed' : 'hover:scale-105 hover:opacity-90'}`}>
-                                    {isSubmittingNested ? '⏳ Saving...' : 'Save Product & Add to Box'}
+                                <button onClick={handleNestedProductSave} disabled={isSubmittingNested} className={`bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3.5 mt-2 rounded-full font-bold text-sm shadow-md transition shrink-0 tracking-wide ${isSubmittingNested ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] hover:opacity-90 hover:shadow-lg'}`}>
+                                    {isSubmittingNested ? 'Saving...' : 'Save Product & Add to Box'}
                                 </button>
                             </div>
                         )}
@@ -684,38 +738,40 @@ function ProductListContent() {
                 )}
             </div>
             
-            <div className="flex justify-center mt-6 pt-6 border-t border-white/10 shrink-0">
-                <button onClick={handleSave} disabled={isSubmitting || (isReadyMade && boxBuilderView === 'newProduct')} className={`bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white px-12 py-3 rounded-full font-bold shadow-lg transition border border-white/20 ${isSubmitting || (isReadyMade && boxBuilderView === 'newProduct') ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90 hover:scale-105'}`}>
+            <div className="flex justify-center mt-10 pt-8 border-t border-slate-200 shrink-0">
+                <button onClick={handleSave} disabled={isSubmitting || (isReadyMade && boxBuilderView === 'newProduct')} className={`bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-14 py-4 rounded-full font-bold shadow-lg transition-all text-base tracking-wide ${isSubmitting || (isReadyMade && boxBuilderView === 'newProduct') ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90 hover:scale-105 hover:shadow-xl'}`}>
                     {isSubmitting ? "Saving..." : (isEditing ? (isReadyMade ? "Update Box" : "Update Product") : (isReadyMade ? "Create Box" : "Create Product"))}
                 </button>
             </div>
-            <button onClick={resetForm} className="absolute top-4 right-4 md:top-6 md:right-8 text-white/50 bg-black/20 w-8 h-8 rounded-full flex items-center justify-center font-bold hover:text-white hover:bg-red-500/50 transition">✕</button>
+            <button onClick={resetForm} className="absolute top-6 right-6 text-slate-400 bg-slate-100 w-10 h-10 rounded-full flex items-center justify-center font-bold hover:text-white hover:bg-rose-500 transition-colors shadow-sm">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         </div>
       )}
 
-      {/* --- PREVIEW MODAL --- */}
+      {/* --- PREVIEW MODAL (Admin Side) --- */}
       {previewProduct && (
-          <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-[70] p-4 backdrop-blur-md animate-fade-in" onClick={() => setPreviewProduct(null)}>
+          <div className="fixed inset-0 bg-slate-900/60 flex justify-center items-center z-[1050] p-4 backdrop-blur-sm animate-fade-in" onClick={() => setPreviewProduct(null)}>
               <div 
-                  className="bg-[#2E1029] w-full max-w-5xl max-h-[90vh] rounded-[2rem] shadow-2xl relative border border-white/20 flex flex-col md:flex-row overflow-hidden"
+                  className="bg-white w-full max-w-5xl max-h-[90vh] rounded-[2rem] shadow-2xl relative border border-slate-100 flex flex-col md:flex-row overflow-hidden"
                   onClick={e => e.stopPropagation()}
               >
-                  <div className="md:w-1/2 bg-black/40 p-6 flex flex-col gap-4 border-r border-white/10">
-                      <div className="w-full h-64 md:h-[400px] rounded-2xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center">
+                  <div className="md:w-1/2 bg-slate-50 p-8 flex flex-col gap-6 border-r border-slate-100">
+                      <div className="w-full h-64 md:h-[400px] rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm flex items-center justify-center">
                           {previewActiveImage ? (
                               <img src={previewActiveImage} alt={previewProduct.name} className="w-full h-full object-cover" />
                           ) : (
-                              <span className="text-6xl">📷</span>
+                              <svg className="w-16 h-16 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           )}
                       </div>
                       
                       {previewProduct.images && previewProduct.images.length > 1 && (
-                          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                          <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
                               {previewProduct.images.map((img: string, i: number) => (
                                   <div 
                                       key={i} onClick={() => setPreviewActiveImage(img)}
-                                      className={`w-16 h-16 rounded-xl overflow-hidden cursor-pointer shrink-0 border-2 transition-all ${previewActiveImage === img ? 'border-[#D883B7]' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                      className={`w-20 h-20 rounded-2xl overflow-hidden cursor-pointer shrink-0 border-2 shadow-sm transition-all ${previewActiveImage === img ? 'border-[#FFAFA8] scale-105 shadow-md' : 'border-transparent opacity-70 hover:opacity-100 hover:border-slate-300'}`}
                                   >
                                       <img src={img} className="w-full h-full object-cover" />
                                   </div>
@@ -724,34 +780,36 @@ function ProductListContent() {
                       )}
                   </div>
 
-                  <div className="md:w-1/2 p-8 overflow-y-auto custom-scrollbar flex flex-col bg-gradient-to-b from-[#2E1029] to-[#4A1D46]">
-                      <div className="flex justify-between items-start mb-2">
-                          <p className="text-[#D883B7] text-xs font-mono tracking-widest uppercase">{previewProduct.id || previewProduct.productid || previewProduct.itemid}</p>
-                          <button onClick={() => setPreviewProduct(null)} className="text-white/50 hover:text-white bg-white/10 w-8 h-8 rounded-full flex items-center justify-center transition-colors">✕</button>
+                  <div className="md:w-1/2 p-8 md:p-10 overflow-y-auto custom-scrollbar flex flex-col bg-white">
+                      <div className="flex justify-between items-start mb-4">
+                          <p className="text-slate-400 text-xs font-mono tracking-widest uppercase bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-sm">{previewProduct.id || previewProduct.productid || previewProduct.itemid}</p>
+                          <button onClick={() => setPreviewProduct(null)} className="text-slate-400 hover:text-rose-500 bg-slate-50 border border-slate-100 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-rose-50 shadow-sm">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
                       </div>
                       
-                      <h2 className="text-3xl font-serif font-bold text-white leading-tight mb-2">{previewProduct.name || previewProduct.productname || previewProduct.itemname}</h2>
+                      <h2 className="text-3xl font-bold text-slate-900 leading-tight mb-3 tracking-tight">{previewProduct.name || previewProduct.productname || previewProduct.itemname}</h2>
                       
-                      <div className="flex items-center gap-1 mb-4">
+                      <div className="flex items-center gap-2 mb-6">
                           {renderStars(calculateAverageRating(previewProduct.actualReviews))}
                           {previewProduct.actualReviews && previewProduct.actualReviews.length > 0 && (
-                              <span className="text-[10px] text-gray-400 ml-1">({previewProduct.actualReviews.length} Reviews)</span>
+                              <span className="text-xs text-slate-500 font-medium ml-1">({previewProduct.actualReviews.length} Reviews)</span>
                           )}
                       </div>
 
-                      <p className="text-2xl font-bold text-white mb-6">{previewPriceText}</p>
+                      <p className="text-2xl font-bold text-slate-900 mb-8">{previewPriceText}</p>
                       
-                      <div className="mb-6">
-                          <h4 className="text-white text-sm font-bold uppercase tracking-wider mb-2">Description</h4>
-                          <p className="text-gray-300 text-sm leading-relaxed">{previewProduct.desc || previewProduct.description || "No specific description available."}</p>
+                      <div className="mb-8">
+                          <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-3">Description</h4>
+                          <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{previewProduct.desc || previewProduct.description || "No specific description available."}</p>
                       </div>
 
                       {previewProduct.features && previewProduct.features.length > 0 && (
-                          <div className="flex flex-col gap-4 mb-8">
+                          <div className="flex flex-col gap-6 mb-10">
                               {previewProduct.features.map((feature: any, idx: number) => (
                                   <div key={idx}>
-                                      <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-2">{feature.name}</h4>
-                                      <div className="flex flex-wrap gap-2">
+                                      <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-3">{feature.name}</h4>
+                                      <div className="flex flex-wrap gap-2.5">
                                           {feature.values.map((val: any, vIdx: number) => {
                                               const vName = typeof val === 'string' ? val : val.name;
                                               const vImg = typeof val === 'object' && val.image ? val.image : null;
@@ -759,11 +817,11 @@ function ProductListContent() {
                                                   <div 
                                                       key={vIdx} 
                                                       onClick={() => { if (vImg) setPreviewActiveImage(vImg); }}
-                                                      className={`flex items-center gap-2 border ${previewActiveImage === vImg ? 'border-[#D883B7] bg-white/10 scale-105' : 'border-white/20 bg-white/5 hover:bg-white/10'} rounded-full px-3 py-1.5 transition cursor-pointer`}
+                                                      className={`flex items-center gap-2 border ${previewActiveImage === vImg ? 'border-[#FFAFA8] bg-gradient-to-r from-rose-50 to-white text-[#ff8a80] shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'} rounded-full px-4 py-2.5 transition-all cursor-pointer font-medium text-sm`}
                                                       title={vImg ? "Click to view variant image" : ""}
                                                   >
-                                                      {vImg && <img src={vImg} className="w-5 h-5 rounded-full object-cover border border-white/20" />}
-                                                      <span className="text-sm text-gray-200">{vName}</span>
+                                                      {vImg && <img src={vImg} className="w-5 h-5 rounded-full object-cover border border-slate-200 shadow-sm" />}
+                                                      <span>{vName}</span>
                                                   </div>
                                               );
                                           })}
@@ -773,10 +831,32 @@ function ProductListContent() {
                           </div>
                       )}
 
-                      <div className="mt-auto pt-6 border-t border-white/10">
-                          <h4 className="text-white text-sm font-bold uppercase tracking-wider mb-4">Customer Reviews</h4>
+                      {/* --- ADMIN PREVIEW BOX CONTENTS --- */}
+                      {String(previewProduct.id || previewProduct.itemid).startsWith('item_') && (
+                          <div className="mb-8 border-t border-slate-100 pt-8">
+                              <div className="flex items-center justify-between mb-5">
+                                  <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                                      <svg className="w-4 h-4 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                      Box Contents
+                                  </h4>
+                                  <span className="text-[10px] bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-3 py-1 rounded-full font-bold shadow-sm">
+                                      Items included
+                                  </span>
+                              </div>
+
+                              <p className="text-sm text-slate-500 italic bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 shadow-inner">
+                                 Please refer to the frontend store to view dynamically loaded box contents.
+                              </p>
+                          </div>
+                      )}
+
+                      <div className="mt-auto pt-8 border-t border-slate-100">
+                          <h4 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-5 flex items-center gap-2">
+                              <svg className="w-4 h-4 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                              Customer Reviews
+                          </h4>
                           {(!previewProduct.actualReviews || previewProduct.actualReviews.length === 0) ? (
-                              <p className="text-gray-400 text-sm italic bg-white/5 p-4 rounded-xl text-center">No reviews yet for this product.</p>
+                              <p className="text-slate-500 text-sm italic bg-slate-50 p-6 rounded-2xl text-center border border-slate-100 shadow-sm">No reviews yet for this product.</p>
                           ) : (
                               <div className="flex flex-col gap-4">
                                   {previewProduct.actualReviews.map((review: any, idx: number) => {
@@ -784,12 +864,12 @@ function ProductListContent() {
                                       const reviewText = review.text || review.comment || review.content || review.review_text || review.reviewText;
                                       
                                       return (
-                                          <div key={idx} className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                              <div className="flex justify-between items-center mb-1">
-                                                  <p className="text-white font-bold text-sm">{reviewerName}</p>
+                                          <div key={idx} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm">
+                                              <div className="flex justify-between items-center mb-3">
+                                                  <p className="text-slate-800 font-bold text-sm">{reviewerName}</p>
                                                   {renderStars(Number(review.rating) || 5)}
                                               </div>
-                                              <p className="text-gray-400 text-xs italic">"{reviewText}"</p>
+                                              <p className="text-slate-600 text-sm italic mt-2 leading-relaxed">"{reviewText}"</p>
                                           </div>
                                       );
                                   })}
@@ -801,23 +881,50 @@ function ProductListContent() {
           </div>
       )}
 
+      {/* --- CUSTOM ELEGANT DIALOG BOX --- */}
       {alertState.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-[#2E1029]/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/30 text-white">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'error' ? 'bg-red-500/20 border-red-400 text-red-200' : alertState.type === 'confirm' ? 'bg-yellow-500/20 border-yellow-400 text-yellow-200' : 'bg-green-500/20 border-green-400 text-green-200'}`}>
-                {alertState.type === 'error' ? '⚠️' : alertState.type === 'confirm' ? '❓' : '✅'}
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 text-slate-800 transform transition-all scale-100">
+              
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 
+                  ${alertState.type === 'error' ? 'bg-rose-50 border-white text-rose-500 shadow-rose-200' : 
+                    alertState.type === 'confirm' ? 'bg-amber-50 border-white text-amber-500 shadow-amber-200' : 
+                    'bg-emerald-50 border-white text-emerald-500 shadow-emerald-200'}`}>
+                {alertState.type === 'error' ? <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg> : 
+                 alertState.type === 'confirm' ? <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> : 
+                 <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
               </div>
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#F3E5F5]">{alertState.title}</h3>
-              <p className="text-[#D883B7] mb-8 font-medium text-sm">{alertState.message}</p>
+
+              <h3 className="text-2xl font-bold mb-3 text-slate-900 tracking-tight">
+                {alertState.title}
+              </h3>
+              
+              <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">
+                {alertState.message}
+              </p>
+
               <div className="flex gap-3 justify-center">
-                  {alertState.type === 'confirm' && <button onClick={closeAlert} className="px-6 py-2 rounded-full font-bold border border-white/30 text-gray-300 hover:bg-white/10 transition">Cancel</button>}
-                  <button onClick={alertState.type === 'confirm' && alertState.onConfirm ? alertState.onConfirm : closeAlert} className={`px-8 py-2 rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition ${alertState.type === 'error' ? 'bg-red-500 text-white' : 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white'}`}>
+                  {alertState.type === 'confirm' && (
+                      <button 
+                        onClick={closeAlert}
+                        className="px-6 py-3 rounded-full font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm"
+                      >
+                        Cancel
+                      </button>
+                  )}
+                  
+                  <button 
+                    onClick={alertState.type === 'confirm' && alertState.onConfirm ? alertState.onConfirm : (alertState.type === 'success' && alertState.onConfirm ? alertState.onConfirm : closeAlert)}
+                    className={`px-8 py-3 rounded-full font-bold shadow-md hover:opacity-90 hover:scale-105 transition-all text-white tracking-wide
+                        ${alertState.type === 'error' ? 'bg-gradient-to-r from-rose-500 to-red-600' : 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80]'}`}
+                  >
                     {alertState.type === 'confirm' ? 'Yes, Confirm' : 'OK'}
                   </button>
               </div>
            </div>
         </div>
       )}
+
     </div>
   );
 }

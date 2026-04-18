@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminHeader from '@/components/AdminHeader'; // Imported your new Admin Header!
+import AdminHeader from '@/components/AdminHeader';
 
 export default function RegisteredUsersPage() {
   const router = useRouter();
@@ -37,72 +37,81 @@ export default function RegisteredUsersPage() {
       (c.phone && c.phone.includes(searchTerm))
   );
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#880e4f] bg-[#fff0f5]">Loading Customers...</div>;
+  if (loading) return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-400">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFAFA8]"></div>
+      </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans text-[#4a1d46] pb-20">
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-24">
       
-      {/* --- REPLACED WITH YOUR NEW ADMIN HEADER --- */}
       <AdminHeader />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
+      <main className="max-w-[1400px] mx-auto px-4 md:px-6 py-10 relative z-10">
         
-        {/* TOP CONTROL BAR */}
-        <div className="bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-8 shadow-2xl border border-white/20 mb-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
-            <div>
-                <h2 className="text-3xl font-serif text-white tracking-wide">Registered Users</h2>
-                <p className="text-sm text-[#D883B7] mt-1 font-medium">Manage your growing customer base.</p>
+        {/* TOP CONTROL BAR - Clean White Card */}
+        <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#fff5f4] to-transparent rounded-bl-full pointer-events-none opacity-70"></div>
+            
+            <div className="relative z-10">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Registered Users</h2>
+                <p className="text-sm text-slate-500 mt-2 font-medium">Manage and review your growing customer base.</p>
             </div>
             
-            <div className="relative w-full md:w-72">
-                <span className="absolute left-4 top-3 text-[#4A1D46]">🔍</span>
+            <div className="relative w-full md:w-80 z-10">
+                <svg className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 <input 
                   type="text" 
                   placeholder="Search name, email, phone..." 
                   value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-full bg-[#F3E5F5] text-[#2E1029] font-bold text-sm focus:outline-none focus:ring-2 focus:ring-[#D883B7] shadow-inner placeholder-[#4A1D46]/50"
+                  className="w-full pl-12 pr-5 py-3.5 rounded-full bg-slate-50 border border-slate-200 text-slate-800 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[#FFAFA8] focus:bg-white shadow-inner placeholder-slate-400 transition-all"
                 />
             </div>
         </div>
 
         {/* CUSTOMER TABLE */}
-        <div className="bg-white/80 backdrop-blur-md rounded-[2rem] shadow-xl overflow-hidden border border-white/60">
-          <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+        <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-200">
+          <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
-                      <tr className="bg-gradient-to-r from-[#880e4f] to-[#ad1457] text-white text-xs uppercase tracking-widest">
-                          <th className="p-5 font-bold">ID</th>
-                          <th className="p-5 font-bold">Name</th>
-                          <th className="p-5 font-bold">Email</th>
-                          <th className="p-5 font-bold">Phone</th>
-                          <th className="p-5 font-bold">Joined Date</th>
-                          <th className="p-5 text-center font-bold">Action</th>
+                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest border-b border-slate-200 font-bold">
+                          <th className="p-5 pl-8 whitespace-nowrap">ID</th>
+                          <th className="p-5 whitespace-nowrap">Name</th>
+                          <th className="p-5">Email</th>
+                          <th className="p-5 whitespace-nowrap">Phone</th>
+                          <th className="p-5 whitespace-nowrap">Joined Date</th>
+                          <th className="p-5 pr-8 text-center">Action</th>
                       </tr>
                   </thead>
-                  <tbody className="divide-y divide-pink-100/50">
+                  <tbody className="divide-y divide-slate-100">
                       {filteredCustomers.length === 0 ? (
                           <tr>
-                              <td colSpan={6} className="p-10 text-center text-[#7B2C62] italic opacity-70">
-                                  No customers found.
+                              <td colSpan={6} className="p-16 text-center">
+                                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 text-slate-300">
+                                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                  </div>
+                                  <p className="text-slate-800 font-bold text-xl tracking-tight mb-1">No customers found.</p>
+                                  <p className="text-slate-500 text-sm font-medium">Try adjusting your search criteria.</p>
                               </td>
                           </tr>
                       ) : (
                           filteredCustomers.map((customer, index) => (
-                              <tr key={index} className="hover:bg-pink-50/50 transition-colors group">
-                                  <td className="p-5 font-bold text-[#ad1457]">{customer.customer_id || '-'}</td>
-                                  <td className="p-5 font-bold text-[#4A1D46]">{customer.name || 'Profile Pending'}</td>
-                                  <td className="p-5 text-gray-500 text-sm">{customer.email}</td>
-                                  <td className="p-5 text-gray-500 text-sm font-mono">{customer.phone || '-'}</td>
-                                  <td className="p-5 text-sm text-[#7B2C62] font-medium">
+                              <tr key={index} className="hover:bg-slate-50 transition-colors duration-200 group">
+                                  <td className="p-5 pl-8 font-bold text-slate-400 font-mono tracking-wider">{customer.customer_id || '-'}</td>
+                                  <td className="p-5 font-bold text-slate-800 tracking-wide">{customer.name || <span className="text-slate-400 italic font-medium">Profile Pending</span>}</td>
+                                  <td className="p-5 text-slate-500 font-medium text-sm">{customer.email}</td>
+                                  <td className="p-5 text-slate-500 text-sm font-medium">{customer.phone || '-'}</td>
+                                  <td className="p-5 text-sm text-slate-600 font-bold">
                                       {customer.joined_date ? new Date(customer.joined_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
                                   </td>
-                                  <td className="p-5 text-center">
+                                  <td className="p-5 pr-8 text-center">
                                       <button 
                                         onClick={() => setSelectedCustomer(customer)} 
-                                        className="px-5 py-2 border border-pink-200 text-[#880e4f] rounded-full text-xs font-bold hover:bg-[#fce4ec] hover:border-[#f8bbd0] transition-all shadow-sm whitespace-nowrap"
+                                        className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-full text-xs font-bold hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8] transition-all shadow-sm whitespace-nowrap"
                                       >
-                                          More Details
+                                          View Profile
                                       </button>
                                   </td>
                               </tr>
@@ -110,41 +119,50 @@ export default function RegisteredUsersPage() {
                       )}
                   </tbody>
               </table>
+              
+              {filteredCustomers.length > 0 && (
+                  <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center text-sm px-8">
+                      <span className="font-bold text-slate-400 uppercase tracking-widest text-[10px]">Total Users</span>
+                      <span className="font-bold text-slate-700 bg-white px-3 py-1 rounded-md border border-slate-200 shadow-sm">{filteredCustomers.length}</span>
+                  </div>
+              )}
           </div>
         </div>
       </main>
 
       {/* --- EXPANDED CUSTOMER DETAILS MODAL --- */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full relative animate-scale-up border border-white/60 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedCustomer(null)}>
+            <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full relative animate-scale-up border border-slate-100 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 
-                <button onClick={() => setSelectedCustomer(null)} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 font-bold text-2xl transition">✕</button>
+                <button onClick={() => setSelectedCustomer(null)} className="absolute top-6 right-6 w-10 h-10 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors shadow-sm z-10">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
                 
-                <div className="flex flex-col items-center text-center mb-6 shrink-0">
-                    <div className="w-20 h-20 bg-gradient-to-tr from-[#D883B7] to-[#9B5DE5] rounded-full flex items-center justify-center text-3xl text-white shadow-lg mb-3 border-4 border-pink-50">
-                        {selectedCustomer.name ? selectedCustomer.name.charAt(0).toUpperCase() : '👤'}
+                <div className="flex flex-col items-center text-center mb-8 shrink-0 relative mt-2">
+                    <div className="w-24 h-24 bg-gradient-to-tr from-[#FFAFA8] to-[#ff8a80] rounded-full flex items-center justify-center text-4xl text-white shadow-lg mb-4 border-4 border-white relative z-10 font-bold uppercase">
+                        {selectedCustomer.name ? selectedCustomer.name.charAt(0) : <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                     </div>
-                    <h2 className="text-2xl font-serif font-bold text-[#4A1D46]">{selectedCustomer.name || 'User'}</h2>
-                    <p className="text-xs font-bold text-[#D883B7] uppercase tracking-widest mt-1">Customer Profile</p>
+                    <h2 className="text-3xl font-bold text-slate-900 tracking-tight">{selectedCustomer.name || 'User'}</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Customer ID: {selectedCustomer.customer_id || '-'}</p>
                 </div>
 
                 {/* SCROLLABLE CONTENT AREA */}
                 <div className="overflow-y-auto pr-2 pb-2 space-y-6 flex-grow custom-scrollbar">
                     
                     {/* Contact Info */}
-                    <div className="bg-pink-50/50 p-5 rounded-2xl border border-pink-100 space-y-3">
-                        <div className="flex justify-between items-center border-b border-pink-100/50 pb-2">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Email</span>
-                            <span className="text-gray-700 font-medium text-sm">{selectedCustomer.email}</span>
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner space-y-3">
+                        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Email</span>
+                            <span className="text-slate-800 font-bold text-sm">{selectedCustomer.email}</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-pink-100/50 pb-2">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Phone</span>
-                            <span className="text-gray-700 font-medium text-sm">{selectedCustomer.phone || '-'}</span>
+                        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Phone</span>
+                            <span className="text-slate-800 font-bold text-sm">{selectedCustomer.phone || '-'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Joined</span>
-                            <span className="text-gray-700 font-medium text-sm">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Joined</span>
+                            <span className="text-slate-800 font-bold text-sm">
                                 {selectedCustomer.joined_date ? new Date(selectedCustomer.joined_date).toLocaleDateString() : 'Unknown'}
                             </span>
                         </div>
@@ -152,26 +170,27 @@ export default function RegisteredUsersPage() {
 
                     {/* Order History */}
                     <div>
-                        <h3 className="text-lg font-serif font-bold text-[#4A1D46] mb-3 flex items-center gap-2">
-                            🛍️ Order History 
-                            <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{selectedCustomer.orders?.length || 0}</span>
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                            Order History 
+                            <span className="bg-slate-100 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-md border border-slate-200 shadow-sm ml-1">{selectedCustomer.orders?.length || 0}</span>
                         </h3>
                         
                         <div className="space-y-3">
                             {selectedCustomer.orders && selectedCustomer.orders.length > 0 ? (
                                 selectedCustomer.orders.map((order: any) => (
-                                    <div key={order.orderid} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center hover:border-pink-300 transition-colors">
+                                    <div key={order.orderid} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center hover:border-[#FFAFA8] transition-colors group">
                                         <div>
-                                            <p className="font-bold text-[#880e4f] text-sm">#{order.orderid}</p>
-                                            <p className="text-xs text-gray-400">{new Date(order.orderdate).toLocaleDateString()}</p>
+                                            <p className="font-bold text-slate-800 text-sm group-hover:text-[#ff8a80] transition-colors">#{order.orderid}</p>
+                                            <p className="text-xs text-slate-400 font-medium mt-0.5">{new Date(order.orderdate).toLocaleDateString()}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-bold text-[#4A1D46] text-sm mb-1">LKR {parseFloat(order.totalamount).toLocaleString()}</p>
-                                            <span className={`text-[9px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                                                order.status === 'Pending' ? 'bg-orange-100 text-orange-600' :
-                                                order.status === 'Processing' ? 'bg-blue-100 text-blue-600' :
-                                                order.status === 'Delivered' ? 'bg-green-100 text-green-600' :
-                                                'bg-red-100 text-red-600'
+                                            <p className="font-bold text-slate-900 text-sm mb-1.5">LKR {parseFloat(order.totalamount).toLocaleString()}</p>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                                order.status === 'Pending' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                                order.status === 'Processing' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                                'bg-rose-50 text-rose-600 border-rose-200'
                                             }`}>
                                                 {order.status}
                                             </span>
@@ -179,20 +198,17 @@ export default function RegisteredUsersPage() {
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center p-6 bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm italic">
-                                    No past orders found.
+                                <div className="text-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center justify-center">
+                                    <svg className="w-6 h-6 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                    <p className="text-slate-500 text-sm font-medium">No past orders found.</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
-
-                <button 
-                  onClick={() => setSelectedCustomer(null)}
-                  className="w-full mt-4 py-3 bg-gradient-to-r from-[#880e4f] to-[#ad1457] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all shrink-0"
-                >
-                  Close Profile
-                </button>
+                
+                {/* Visual anchor point for the scroll area */}
+                <div className="h-4 w-full bg-gradient-to-t from-white to-transparent absolute bottom-0 left-0 pointer-events-none"></div>
             </div>
         </div>
       )}

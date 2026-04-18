@@ -73,7 +73,7 @@ export default function MyOrdersPage() {
     if (type === 'cancel') {
         setConfirmDialog({ show: true, type: 'cancel', orderId, title: 'Cancel Order?', message: 'Are you sure you want to cancel this order? This action cannot be undone.' });
     } else {
-        setConfirmDialog({ show: true, type: 'delete', orderId, title: 'Delete from History?', message: 'This will permanently remove this order from your history. Are you sure?' });
+        setConfirmDialog({ show: true, type: 'delete', orderId, title: 'Delete History?', message: 'This will permanently remove this order from your history.' });
     }
   };
 
@@ -118,7 +118,7 @@ export default function MyOrdersPage() {
               body: JSON.stringify({
                   type: supportMode,
                   orderId: selectedOrder.orderid,
-                  customerName: selectedOrder.shipping_name, // Send the name safely from the order
+                  customerName: selectedOrder.shipping_name, 
                   ...supportData
               })
           });
@@ -140,8 +140,8 @@ export default function MyOrdersPage() {
   };
 
   if (loading) return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#880e4f]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFAFA8]"></div>
       </div>
   );
 
@@ -149,35 +149,37 @@ export default function MyOrdersPage() {
   const showModalDeliveryBadge = selectedOrder && modalDeliveryInfo && !modalDeliveryInfo.isExpired && ['Processing', 'Pending'].includes(selectedOrder.status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46] pb-20">
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-24">
       <CustomerHeader />
-      <main className="container mx-auto px-6 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 md:px-6 py-10 max-w-[1400px]">
         
-        <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
+        {/* HERO SECTION */}
+        <div className="bg-white rounded-[2.5rem] p-10 md:p-12 shadow-sm border border-slate-200 mb-10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#fff5f4] to-transparent rounded-bl-full pointer-events-none opacity-70 group-hover:scale-110 transition-transform duration-700"></div>
             
             <div className="relative z-10 text-center md:text-left">
-                <div className="inline-block bg-white/10 px-5 py-1.5 rounded-full border border-white/20 text-xs font-bold tracking-widest uppercase mb-4 text-[#F3E5F5] shadow-inner">
+                <div className="inline-block bg-[#fff5f4] px-5 py-1.5 rounded-full border border-[#FFAFA8]/30 text-xs font-bold tracking-widest uppercase mb-4 text-[#ff8a80] shadow-sm">
                     Order History
                 </div>
-                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wide mb-3">Your Orders</h1>
-                <p className="text-[#D883B7] font-medium text-lg max-w-md mx-auto md:mx-0">Track your current deliveries and review your past purchases.</p>
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-3 text-slate-900">Your Orders</h1>
+                <p className="text-slate-500 font-medium text-lg max-w-md mx-auto md:mx-0">Track your current deliveries and review your past purchases.</p>
             </div>
             
             <div className="relative z-10 flex items-center justify-center shrink-0">
-                <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-4xl shadow-inner border border-white/20 relative group hover:scale-105 transition-transform duration-500">
-                    <span className="animate-pulse drop-shadow-[0_0_15px_rgba(216,131,183,0.6)]">📦</span>
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center shadow-inner border border-slate-100 relative group hover:bg-white hover:shadow-md hover:border-[#FFAFA8] transition-all duration-300">
+                    <svg className="w-10 h-10 text-slate-400 group-hover:text-[#ff8a80] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                 </div>
             </div>
         </div>
 
         <div className="space-y-6 max-w-4xl mx-auto">
             {orders.length === 0 ? (
-                <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-lg border border-white/60 p-16 text-center">
-                    <div className="text-6xl mb-4 opacity-70">🛍️</div>
-                    <p className="text-2xl font-serif font-bold text-[#880e4f] mb-2">No orders yet.</p>
-                    <button onClick={() => router.push('/shop')} className="px-8 py-3 mt-4 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all border border-white/20">Start Shopping</button>
+                <div className="bg-white rounded-[2.5rem] p-16 text-center border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100 text-slate-300">
+                        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">No orders yet.</p>
+                    <button onClick={() => router.push('/shop')} className="px-10 py-3.5 mt-4 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md hover:scale-105 hover:shadow-lg transition-all tracking-wide">Start Shopping</button>
                 </div>
             ) : (
                 orders.map((order) => {
@@ -185,43 +187,49 @@ export default function MyOrdersPage() {
                     const showDeliveryBadge = ['Processing', 'Pending'].includes(order.status) && !deliveryInfo.isExpired;
 
                     return (
-                        <div key={order.orderid} className="bg-white/70 backdrop-blur-md p-6 md:p-8 rounded-[2rem] shadow-sm border border-white/50 hover:shadow-lg transition-all duration-300">
+                        <div key={order.orderid} className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 hover:border-[#FFAFA8] hover:shadow-md transition-all duration-300 group">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                                 <div>
-                                    <span className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest block mb-1">ORDER #{order.orderid}</span>
-                                    <p className="text-sm font-bold text-[#4A1D46]">{new Date(order.orderdate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">ORDER #{order.orderid}</span>
+                                    <p className="text-sm font-bold text-slate-700">{new Date(order.orderdate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                 </div>
                                 <span className={`px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border shadow-sm ${
-                                    order.status === 'Delivered' ? 'bg-green-50 text-green-600 border-green-200' :
-                                    order.status === 'Rejected' || order.status === 'Cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                    order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                    order.status === 'Rejected' || order.status === 'Cancelled' ? 'bg-rose-50 text-rose-600 border-rose-200' :
                                     order.status === 'Processing' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                    'bg-yellow-50 text-yellow-600 border-yellow-200'
+                                    'bg-amber-50 text-amber-600 border-amber-200'
                                 }`}>{order.status}</span>
                             </div>
 
                             {showDeliveryBadge && (
-                                <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-100 text-[#7B2C62] text-sm mb-6 flex items-center gap-3 shadow-inner">
-                                    <span className="text-xl">🚚</span> 
+                                <div className="bg-[#fff5f4] p-4 rounded-2xl border border-[#FFAFA8]/30 text-[#ff8a80] text-sm mb-6 flex items-center gap-3 shadow-inner">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 011 1v2.586a1 1 0 01-.293.707l-1.414 1.414a1 1 0 01-.707.293h-2.586a1 1 0 01-1-1V17a1 1 0 011-1h1m8-10v10m-6-10v10" /></svg>
                                     <span><span className="font-bold">Estimated Arrival:</span> {deliveryInfo.text}</span>
                                 </div>
                             )}
                             
                             {order.status === 'Rejected' && (
-                                <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100 text-red-700 text-sm font-bold mb-6 flex items-center gap-3">
-                                    <span className="text-lg">❌</span> Order Rejected: {order.rejectreason}
+                                <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 text-rose-700 text-sm font-bold mb-6 flex items-center gap-3">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Order Rejected: {order.rejectreason}
                                 </div>
                             )}
 
-                            <div className="flex flex-col sm:flex-row justify-between items-center py-4 border-t border-pink-100 gap-4">
-                                <div className="flex items-center gap-3 w-full sm:w-auto">
-                                    <div className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">{order.paymentmethod}</div>
-                                    <p className="text-2xl font-bold text-[#880e4f]">LKR {parseFloat(order.totalamount).toLocaleString()}</p>
+                            <div className="flex flex-col sm:flex-row justify-between items-center py-4 border-t border-slate-100 gap-4">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    <div className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1 rounded-md uppercase tracking-wider">{order.paymentmethod}</div>
+                                    <p className="text-2xl font-bold text-slate-900">LKR {parseFloat(order.totalamount).toLocaleString()}</p>
                                 </div>
 
                                 <div className="flex gap-3 w-full sm:w-auto">
-                                    <button onClick={() => handleViewDetails(order)} className="flex-1 sm:flex-none px-6 py-2.5 bg-pink-50 text-[#880e4f] rounded-full text-sm font-bold hover:bg-[#880e4f] hover:text-white transition-all border border-pink-200 hover:border-transparent shadow-sm">View Details</button>
-                                    {order.status === 'Pending' && <button onClick={() => openConfirmDialog('cancel', order.orderid)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white text-red-500 border border-red-200 rounded-full text-sm font-bold hover:bg-red-50 transition-all shadow-sm">Cancel</button>}
-                                    {['Delivered', 'Cancelled', 'Rejected'].includes(order.status) && <button onClick={() => openConfirmDialog('delete', order.orderid)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white text-gray-400 border border-gray-200 rounded-full text-sm font-bold hover:bg-gray-50 hover:text-red-500 transition-all shadow-sm">Remove</button>}
+                                    <button onClick={() => handleViewDetails(order)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white text-slate-700 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#ff8a80] transition-all border border-slate-200 shadow-sm flex items-center justify-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        View Details
+                                    </button>
+                                    {order.status === 'Pending' && <button onClick={() => openConfirmDialog('cancel', order.orderid)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white text-rose-500 border border-rose-200 rounded-full text-sm font-bold hover:bg-rose-50 transition-all shadow-sm">Cancel</button>}
+                                    {['Delivered', 'Cancelled', 'Rejected'].includes(order.status) && <button onClick={() => openConfirmDialog('delete', order.orderid)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white text-slate-400 border border-slate-200 rounded-full text-sm font-bold hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>}
                                 </div>
                             </div>
                         </div>
@@ -233,35 +241,39 @@ export default function MyOrdersPage() {
 
       {/* --- CONFIRMATION DIALOG --- */}
       {confirmDialog.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-scale-up">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${confirmDialog.type === 'delete' ? 'bg-[#FFEBEE] border-[#FFCDD2] text-red-500' : 'bg-[#FFF9C4] border-[#FFF59D] text-yellow-600'}`}>
-                    {confirmDialog.type === 'delete' ? '🗑️' : '⚠️'}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 transform transition-all scale-100">
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white ${confirmDialog.type === 'delete' ? 'bg-rose-50 text-rose-500' : 'bg-amber-50 text-amber-500'}`}>
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                 </div>
-                <h3 className="text-2xl font-serif font-bold text-[#4A1D46] mb-2">{confirmDialog.title}</h3>
-                <p className="text-[#7B2C62] mb-8 font-medium text-sm">{confirmDialog.message}</p>
-                <div className="flex gap-3 justify-center">
-                    <button onClick={() => setConfirmDialog({ ...confirmDialog, show: false })} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">No, Keep it</button>
-                    <button onClick={handleConfirmAction} className={`flex-1 py-3 text-white rounded-xl font-bold transition shadow-lg ${confirmDialog.type === 'delete' ? 'bg-gradient-to-r from-[#e53935] to-[#d32f2f]' : 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5]'}`}>
-                        {confirmDialog.type === 'delete' ? 'Yes, Delete' : 'Yes, Cancel'}
+                <h3 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">{confirmDialog.title}</h3>
+                <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">{confirmDialog.message}</p>
+                <div className="flex gap-4 justify-center">
+                    <button onClick={() => setConfirmDialog({ ...confirmDialog, show: false })} className="flex-1 py-3 bg-white text-slate-600 rounded-full font-bold hover:bg-slate-50 border border-slate-200 transition-all shadow-sm">Cancel</button>
+                    <button onClick={handleConfirmAction} className={`flex-1 py-3 text-white rounded-full font-bold shadow-md transition-all hover:scale-105 ${confirmDialog.type === 'delete' ? 'bg-gradient-to-r from-rose-500 to-rose-600' : 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80]'}`}>
+                        Confirm
                     </button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* --- BEAUTIFUL CUSTOM ALERT DIALOG --- */}
+      {/* --- CUSTOM ALERT DIALOG --- */}
       {alertState.show && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-scale-up">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border ${alertState.type === 'success' ? 'bg-green-50 border-green-200 text-green-500' : 'bg-[#FFF9C4] border-[#FFF59D] text-yellow-600'}`}>
-                {alertState.type === 'success' ? '✨' : '⚠️'}
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 transform transition-all scale-100">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white ${alertState.type === 'success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                {alertState.type === 'success' ? (
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                )}
               </div>
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium text-sm">{alertState.message}</p>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">{alertState.title}</h3>
+              <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">{alertState.message}</p>
               <button 
                 onClick={() => setAlertState({ ...alertState, show: false })}
-                className={`px-10 py-3 text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full border border-white/20 ${alertState.type === 'success' ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5]' : 'bg-gray-800'}`}
+                className="px-10 py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all w-full tracking-wide uppercase text-xs"
               >
                 Close
               </button>
@@ -271,142 +283,159 @@ export default function MyOrdersPage() {
 
       {/* --- ORDER DETAILS MODAL (WITH SUPPORT HUB) --- */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto relative animate-scale-up border border-white/60 custom-scrollbar flex flex-col md:flex-row gap-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedOrder(null)}>
+            <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative animate-scale-up border border-slate-100 custom-scrollbar flex flex-col md:flex-row gap-10" onClick={e => e.stopPropagation()}>
                 
-                <button onClick={() => setSelectedOrder(null)} className="absolute top-6 right-6 text-gray-400 hover:text-[#880e4f] font-bold text-2xl leading-none transition-colors z-10">✕</button>
+                <button onClick={() => setSelectedOrder(null)} className="absolute top-8 right-8 w-10 h-10 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-400 hover:text-rose-500 transition-colors leading-none z-10 shadow-sm">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
                 
-                <div className="flex-1 border-r border-pink-100 pr-0 md:pr-8">
-                    <div className="mb-8 border-b border-pink-100 pb-6">
-                        <p className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-1">Receipt</p>
-                        <h2 className="text-3xl font-serif font-bold text-[#4A1D46]">Order #{selectedOrder.orderid}</h2>
+                <div className="flex-1 md:border-r md:border-slate-100 md:pr-10">
+                    <div className="mb-8 border-b border-slate-100 pb-6">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Receipt Summary</p>
+                        <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Order #{selectedOrder.orderid}</h2>
                     </div>
                     
-                    <div className="bg-pink-50/50 p-6 rounded-2xl mb-8 border border-pink-100 relative">
+                    <div className="bg-slate-50 p-6 rounded-3xl mb-8 border border-slate-200 relative shadow-inner">
                         {showModalDeliveryBadge && (
-                            <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-lg border border-pink-100 text-xs font-bold text-[#7B2C62] shadow-sm flex items-center gap-1.5">
-                                <span>🚚</span> {modalDeliveryInfo?.text}
+                            <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-lg border border-[#FFAFA8]/30 text-xs font-bold text-[#ff8a80] shadow-sm flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 011 1v2.586a1 1 0 01-.293.707l-1.414 1.414a1 1 0 01-.707.293h-2.586a1 1 0 01-1-1V17a1 1 0 011-1h1m8-10v10m-6-10v10" /></svg>
+                                {modalDeliveryInfo?.text}
                             </div>
                         )}
                         
-                        <p className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-2">Shipping To</p>
-                        <p className="font-bold text-lg text-[#4A1D46] mb-1">{selectedOrder.shipping_name}</p>
-                        <p className="text-sm font-medium text-[#7B2C62] mb-1">{selectedOrder.shipping_address}</p>
-                        <p className="text-sm font-bold text-gray-500">{selectedOrder.shipping_phone}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Shipping To</p>
+                        <p className="font-bold text-lg text-slate-800 mb-1">{selectedOrder.shipping_name}</p>
+                        <p className="text-sm font-medium text-slate-600 mb-2 leading-relaxed">{selectedOrder.shipping_address}</p>
+                        <p className="text-sm font-bold text-slate-400 font-mono">{selectedOrder.shipping_phone}</p>
                     </div>
 
-                    <h3 className="text-[10px] font-bold text-[#D883B7] uppercase tracking-widest mb-3 ml-2">Items Ordered</h3>
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 ml-2">Purchased Items</h3>
                     
                     {loadingDetails ? (
-                        <div className="text-center py-8 text-gray-400 font-medium">Loading details...</div>
+                        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFAFA8]"></div></div>
                     ) : (
                         <div className="space-y-4">
                             {orderItems.length > 0 ? orderItems.map((item, index) => (
-                                <div key={index} className="flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center border border-gray-200 shrink-0">
-                                        {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <span className="text-2xl opacity-50">📦</span>}
+                                <div key={index} className="flex items-center gap-5 p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-[#FFAFA8] transition-colors group/item">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 shrink-0 shadow-inner">
+                                        {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500" /> : <svg className="w-8 h-8 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>}
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-[#4A1D46] text-base">{item.name}</h4>
-                                        <p className="text-xs font-bold text-gray-400 mt-1">Qty: {item.quantity}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-slate-800 text-base truncate">{item.name}</h4>
+                                        <p className="text-xs font-bold text-slate-400 mt-1">Quantity: {item.quantity}</p>
                                     </div>
-                                    <div className="font-bold text-[#880e4f] text-base">LKR {(item.quantity * parseFloat(item.price || item.amount)).toLocaleString()}</div>
+                                    <div className="font-bold text-slate-900 text-base">LKR {(item.quantity * parseFloat(item.price || item.amount)).toLocaleString()}</div>
                                 </div>
-                            )) : <p className="text-gray-500 text-sm text-center py-4">No items found.</p>}
+                            )) : <p className="text-slate-400 text-sm text-center py-8 italic font-medium">No items found for this order.</p>}
                         </div>
                     )}
                     
-                    <div className="mt-8 pt-6 border-t border-pink-100 flex justify-between items-center bg-[#F3E5F5] p-6 rounded-2xl">
-                        <span className="text-sm font-bold text-[#4A1D46] uppercase tracking-widest">Total Paid</span>
-                        <span className="text-2xl font-bold text-[#880e4f]">LKR {parseFloat(selectedOrder.totalamount).toLocaleString()}</span>
+                    <div className="mt-8 pt-8 border-t border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white p-6 rounded-3xl">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Transaction</span>
+                        <span className="text-3xl font-bold tracking-tight text-slate-900">LKR {parseFloat(selectedOrder.totalamount).toLocaleString()}</span>
                     </div>
                 </div>
 
                 <div className="w-full md:w-80 shrink-0 flex flex-col pt-8 md:pt-0">
-                    <div className="mb-6 border-b border-pink-100 pb-4">
-                        <h3 className="text-xl font-serif font-bold text-[#880e4f] flex items-center gap-2">
-                            <span>💬</span> Help & Support
+                    <div className="mb-8 border-b border-slate-100 pb-4">
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            <svg className="w-5 h-5 text-[#ff8a80]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            Support Hub
                         </h3>
                     </div>
 
                     {!supportMode ? (
                         <div className="space-y-3">
-                            <button onClick={() => setSupportMode('complaint')} className="w-full p-4 bg-gray-50 hover:bg-pink-50 border border-gray-200 hover:border-pink-200 rounded-xl text-left transition group">
-                                <p className="font-bold text-[#4A1D46] mb-1 flex items-center justify-between">
-                                    <span>⚠️ File a Complaint</span>
-                                    <span className="text-gray-400 group-hover:text-[#880e4f]">→</span>
+                            <button onClick={() => setSupportMode('complaint')} className="w-full p-5 bg-slate-50 hover:bg-[#fff5f4] border border-slate-200 hover:border-[#FFAFA8] rounded-2xl text-left transition-all duration-300 group/btn shadow-sm">
+                                <p className="font-bold text-slate-800 mb-1 flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        File a Complaint
+                                    </span>
+                                    <svg className="w-4 h-4 text-slate-300 group-hover/btn:text-[#ff8a80] group-hover/btn:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                 </p>
-                                <p className="text-xs text-gray-500">Delivery issues or bad service.</p>
+                                <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Delivery or service issues</p>
                             </button>
                             
                             {selectedOrder.status === 'Delivered' && (
                                 <>
-                                    <button onClick={() => setSupportMode('review')} className="w-full p-4 bg-gray-50 hover:bg-pink-50 border border-gray-200 hover:border-pink-200 rounded-xl text-left transition group">
-                                        <p className="font-bold text-[#4A1D46] mb-1 flex items-center justify-between">
-                                            <span>🌟 Write a Review</span>
-                                            <span className="text-gray-400 group-hover:text-[#880e4f]">→</span>
+                                    <button onClick={() => setSupportMode('review')} className="w-full p-5 bg-slate-50 hover:bg-[#fff5f4] border border-slate-200 hover:border-[#FFAFA8] rounded-2xl text-left transition-all duration-300 group/btn shadow-sm">
+                                        <p className="font-bold text-slate-800 mb-1 flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+                                                Write a Review
+                                            </span>
+                                            <svg className="w-4 h-4 text-slate-300 group-hover/btn:text-[#ff8a80] group-hover/btn:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                         </p>
-                                        <p className="text-xs text-gray-500">Rate your purchased products.</p>
+                                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Rate your products</p>
                                     </button>
-                                    <button onClick={() => setSupportMode('return')} className="w-full p-4 bg-gray-50 hover:bg-pink-50 border border-gray-200 hover:border-pink-200 rounded-xl text-left transition group">
-                                        <p className="font-bold text-[#4A1D46] mb-1 flex items-center justify-between">
-                                            <span>↩️ Request Return</span>
-                                            <span className="text-gray-400 group-hover:text-[#880e4f]">→</span>
+                                    <button onClick={() => setSupportMode('return')} className="w-full p-5 bg-slate-50 hover:bg-[#fff5f4] border border-slate-200 hover:border-[#FFAFA8] rounded-2xl text-left transition-all duration-300 group/btn shadow-sm">
+                                        <p className="font-bold text-slate-800 mb-1 flex items-center justify-between">
+                                            <span className="flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                                Request Return
+                                            </span>
+                                            <svg className="w-4 h-4 text-slate-300 group-hover/btn:text-[#ff8a80] group-hover/btn:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                         </p>
-                                        <p className="text-xs text-gray-500">Item is damaged or incorrect.</p>
+                                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">Item damaged or incorrect</p>
                                     </button>
                                 </>
                             )}
                             {selectedOrder.status !== 'Delivered' && (
-                                <p className="text-xs text-center text-gray-400 mt-4 italic p-4 bg-gray-50 rounded-xl">Reviews and Returns will unlock once your order is Delivered.</p>
+                                <p className="text-xs text-center text-slate-400 mt-6 italic p-5 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner font-medium leading-relaxed">Reviews and Returns will unlock once your order is Delivered.</p>
                             )}
                         </div>
                     ) : (
                         <div className="bg-white rounded-2xl animate-fade-in flex flex-col h-full">
-                            <button type="button" onClick={() => setSupportMode(null)} className="text-xs font-bold text-gray-400 hover:text-[#880e4f] mb-4 flex items-center gap-1 w-fit">
-                                ← Back to Menu
+                            <button type="button" onClick={() => setSupportMode(null)} className="text-xs font-bold text-slate-400 hover:text-[#ff8a80] mb-6 flex items-center gap-1.5 transition-colors w-fit group/back">
+                                <svg className="w-4 h-4 group-hover/back:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                Back to Menu
                             </button>
                             
-                            <h4 className="font-bold text-[#880e4f] mb-4">
+                            <h4 className="font-bold text-slate-900 mb-6 text-lg tracking-tight">
                                 {supportMode === 'complaint' && 'File a Complaint'}
                                 {supportMode === 'review' && 'Write a Product Review'}
                                 {supportMode === 'return' && 'Request a Return'}
                             </h4>
 
-                            <form onSubmit={handleSupportSubmit} className="space-y-4 flex flex-col flex-grow">
+                            <form onSubmit={handleSupportSubmit} className="space-y-5 flex flex-col flex-grow">
                                 
                                 {(supportMode === 'review' || supportMode === 'return') && (
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Select Item *</label>
-                                        <select 
-                                            required
-                                            className="w-full p-2.5 mt-1 border rounded-xl text-sm outline-none focus:border-[#880e4f] text-[#4A1D46]"
-                                            onChange={(e) => {
-                                                const selected = orderItems.find(i => i.productid === e.target.value || i.itemid === e.target.value);
-                                                if (selected) {
-                                                    setSupportData({...supportData, productId: selected.productid || '', itemId: selected.itemid || ''});
-                                                }
-                                            }}
-                                        >
-                                            <option value="">Choose a product...</option>
-                                            {orderItems.map((item, idx) => (
-                                                <option key={idx} value={item.productid || item.itemid}>{item.name}</option>
-                                            ))}
-                                        </select>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Select Item *</label>
+                                        <div className="relative">
+                                            <select 
+                                                required
+                                                className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 font-medium appearance-none shadow-sm transition-all"
+                                                onChange={(e) => {
+                                                    const selected = orderItems.find(i => i.productid === e.target.value || i.itemid === e.target.value);
+                                                    if (selected) {
+                                                        setSupportData({...supportData, productId: selected.productid || '', itemId: selected.itemid || ''});
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Choose a product...</option>
+                                                {orderItems.map((item, idx) => (
+                                                    <option key={idx} value={item.productid || item.itemid}>{item.name}</option>
+                                                ))}
+                                            </select>
+                                            <svg className="w-4 h-4 absolute right-4 top-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
                                     </div>
                                 )}
 
                                 {supportMode === 'review' && (
                                     <div>
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Rating</label>
-                                        <div className="flex gap-2 mt-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Your Rating</label>
+                                        <div className="flex gap-2.5 mt-1 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-inner w-fit">
                                             {[1, 2, 3, 4, 5].map(star => (
                                                 <button 
                                                     key={star} type="button"
                                                     onClick={() => setSupportData({...supportData, rating: star})}
-                                                    className={`text-2xl transition-transform hover:scale-110 ${supportData.rating >= star ? 'text-yellow-400' : 'text-gray-200 grayscale'}`}
+                                                    className={`text-2xl transition-all hover:scale-125 ${supportData.rating >= star ? 'text-amber-400 filter drop-shadow-sm' : 'text-slate-200'}`}
                                                 >
-                                                    ⭐
+                                                    <svg className="w-7 h-7 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
                                                 </button>
                                             ))}
                                         </div>
@@ -414,7 +443,7 @@ export default function MyOrdersPage() {
                                 )}
 
                                 <div className="flex-grow flex flex-col">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">
                                         {supportMode === 'return' ? 'Reason for Return *' : 'Your Message *'}
                                     </label>
                                     <textarea 
@@ -430,16 +459,21 @@ export default function MyOrdersPage() {
                                             if (supportMode === 'return') setSupportData({...supportData, reason: e.target.value});
                                             else setSupportData({...supportData, message: e.target.value});
                                         }}
-                                        className="w-full p-3 border rounded-xl text-sm outline-none focus:border-[#880e4f] resize-none flex-grow"
+                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 font-medium resize-none flex-grow shadow-inner transition-all placeholder:text-slate-400"
                                     ></textarea>
                                 </div>
 
                                 <button 
                                     type="submit" 
                                     disabled={submittingSupport}
-                                    className="w-full py-3 mt-auto bg-[#880e4f] text-white rounded-xl font-bold shadow-md hover:opacity-90 transition disabled:opacity-50"
+                                    className={`w-full py-4 mt-6 text-white rounded-full font-bold shadow-md transition-all tracking-wide text-sm
+                                        ${submittingSupport ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] hover:shadow-lg hover:scale-[1.02]'}`}
                                 >
-                                    {submittingSupport ? 'Submitting...' : 'Submit Request'}
+                                    {submittingSupport ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Submitting...
+                                        </span>
+                                    ) : 'Submit Support Request'}
                                 </button>
                             </form>
                         </div>

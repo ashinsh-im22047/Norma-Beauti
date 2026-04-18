@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState({
     name: '',
     email: '',
-    phone: '', // Stores full phone like +94771234567
+    phone: '', 
     address: '',
     dob: '',
     gender: ''
@@ -22,11 +22,11 @@ export default function ProfilePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
-  // Temp data for editing (Phone is split for easier handling)
+  // Temp data for editing
   const [editData, setEditData] = useState({ 
     name: '',
     email: '',
-    phoneNoPrefix: '', // Just the 9 digits
+    phoneNoPrefix: '', 
     address: '',
     dob: '',
     gender: ''
@@ -51,9 +51,6 @@ export default function ProfilePage() {
       if (res.ok) {
         const data = await res.json();
         const fullPhone = data.phone || '';
-        // Extract 9 digits if it starts with +94, otherwise keep as is
-        const rawPhone = fullPhone.startsWith('+94') ? fullPhone.slice(3) : fullPhone;
-
         const cleanData = {
             name: data.name || '',
             email: data.email || '',
@@ -74,7 +71,6 @@ export default function ProfilePage() {
   // 2. EDIT LOGIC
   const openEdit = () => {
     const phoneDigits = user.phone.startsWith('+94') ? user.phone.slice(3) : user.phone;
-    
     setEditData({
         ...user,
         phoneNoPrefix: phoneDigits
@@ -86,11 +82,8 @@ export default function ProfilePage() {
     setShowEditModal(false); 
   };
 
-  // Handle Input Changes
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-
-    // Special handling for Phone: Allow only numbers, max 9 digits
     if (name === 'phoneNoPrefix') {
         const numbersOnly = value.replace(/[^0-9]/g, '');
         if (numbersOnly.length <= 9) {
@@ -98,37 +91,28 @@ export default function ProfilePage() {
         }
         return;
     }
-
     setEditData({ ...editData, [name]: value });
   };
 
   const saveChanges = async () => {
-    // 1. Validate Name
     if (!editData.name.trim()) {
         setAlertState({ show: true, type: 'error', title: 'Missing Information', message: 'Full Name is required.' });
         return;
     }
-
-    // 2. Validate Phone (Must be exactly 9 digits)
     if (editData.phoneNoPrefix.length !== 9) {
         setAlertState({ show: true, type: 'error', title: 'Invalid Phone Number', message: 'Please enter exactly 9 digits after +94.' });
         return;
     }
-
-    // 3. Validate Address
     if (!editData.address.trim()) {
         setAlertState({ show: true, type: 'error', title: 'Missing Information', message: 'Address is required.' });
         return;
     }
-
-    // 4. Validate Date of Birth (No future dates)
     const today = new Date().toISOString().split('T')[0];
     if (editData.dob && editData.dob > today) {
         setAlertState({ show: true, type: 'error', title: 'Invalid Date', message: 'Date of Birth cannot be in the future.' });
         return;
     }
 
-    // 5. Construct Final Data to Save
     const finalProfile = {
         name: editData.name,
         email: editData.email, 
@@ -160,153 +144,133 @@ export default function ProfilePage() {
   const maxDate = new Date().toISOString().split("T")[0];
 
   if (loading) return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#880e4f]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFAFA8]"></div>
       </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46] pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 pb-24">
       <CustomerHeader />
       
-      <main className="container mx-auto px-6 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 lg:px-8 py-12 max-w-7xl">
         
-        {/* --- ELEGANT CUSTOMER HERO SECTION --- */}
-        <div className="bg-[#4A1D46]/95 backdrop-blur-xl rounded-[2rem] p-10 md:p-12 shadow-2xl border border-white/20 mb-12 text-white relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            
-            {/* Decorative background glows */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#D883B7]/20 rounded-full blur-[80px] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#9B5DE5]/20 rounded-full blur-[80px] pointer-events-none"></div>
-            
-            <div className="relative z-10 text-center md:text-left">
-                <div className="inline-block bg-white/10 px-5 py-1.5 rounded-full border border-white/20 text-xs font-bold tracking-widest uppercase mb-4 text-[#F3E5F5] shadow-inner">
-                    My Account
+        {/* --- REFINED HERO SECTION --- */}
+        <div className="relative overflow-hidden bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-slate-200 mb-10">
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-[#fff5f4] to-transparent pointer-events-none opacity-60"></div>
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
+                <div className="flex-1">
+                    <span className="inline-block bg-[#fff5f4] px-4 py-1 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase mb-4 text-[#ff8a80] border border-[#FFAFA8]/20">
+                        Personal Dashboard
+                    </span>
+                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
+                        Welcome back, <span className="text-[#ff8a80]">{user.name.split(' ')[0] || "Guest"}!</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium text-lg max-w-xl">
+                        Everything you need to manage your account and track your orders in one place.
+                    </p>
                 </div>
-                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-wide mb-3">Your Profile</h1>
-                <p className="text-[#D883B7] font-medium text-lg max-w-md mx-auto md:mx-0">
-                    Manage your personal details, track orders, and curate your wishlist.
-                </p>
-            </div>
-            
-            <div className="relative z-10 flex items-center justify-center shrink-0">
-                <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-5xl shadow-inner border border-white/20 relative group hover:scale-105 transition-transform duration-500">
-                    <span className="animate-pulse drop-shadow-[0_0_15px_rgba(216,131,183,0.6)]">👤</span>
+                <div className="hidden lg:flex w-32 h-32 items-center justify-center bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 rotate-3">
+                     <svg className="w-16 h-16 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 </div>
             </div>
         </div>
-        {/* --- END HERO SECTION --- */}
 
-        <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
-            {/* --- LEFT SIDEBAR (Profile Card) --- */}
-            <div className="w-full md:w-1/3 flex flex-col gap-6">
-                <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-xl border border-white/60 flex flex-col items-center text-center">
-                    <div className="w-32 h-32 bg-gradient-to-tr from-[#D883B7] to-[#9B5DE5] rounded-full flex items-center justify-center text-5xl text-white shadow-inner mb-4 border-4 border-white">
-                        {user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* --- SIDEBAR --- */}
+            <div className="lg:col-span-4 space-y-6">
+                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
+                    <div className="relative inline-block mb-6">
+                        <div className="w-28 h-28 bg-gradient-to-tr from-[#FFAFA8] to-[#ff8a80] rounded-3xl flex items-center justify-center text-4xl text-white shadow-lg border-4 border-white font-bold uppercase rotate-3">
+                            {user.name ? user.name.charAt(0) : "C"}
+                        </div>
                     </div>
-                    <h2 className="text-2xl font-serif font-bold text-[#4A1D46] mb-1">{user.name || "Customer"}</h2>
-                    <p className="text-sm text-gray-500 mb-8">{user.email}</p>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-1">{user.name || "Customer"}</h2>
+                    <p className="text-sm text-slate-400 font-medium mb-8 italic">{user.email}</p>
 
-                    <div className="w-full space-y-4">
-                        <button onClick={() => router.push('/wishlist')} className="w-full py-3.5 bg-white text-[#4A1D46] border border-pink-200 rounded-2xl font-bold shadow-sm hover:bg-pink-50 hover:border-pink-300 transition-all flex items-center justify-center gap-2">
-                            <span>💖</span> My Wishlist
-                        </button>
-                        <button onClick={() => router.push('/profile/my-orders')} className="w-full py-3.5 bg-white text-[#4A1D46] border border-pink-200 rounded-2xl font-bold shadow-sm hover:bg-pink-50 hover:border-pink-300 transition-all flex items-center justify-center gap-2">
-                            <span>📦</span> My Orders
-                        </button>
-                        <button onClick={() => router.push('/contact')} className="w-full py-3.5 bg-white text-[#4A1D46] border border-pink-200 rounded-2xl font-bold shadow-sm hover:bg-pink-50 hover:border-pink-300 transition-all flex items-center justify-center gap-2">
-                            <span>✉️</span> Contact Owner
-                        </button>
+                    <div className="space-y-3">
+                        <SidebarBtn onClick={() => router.push('/wishlist')} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />} label="My Wishlist" color="text-rose-400" />
+                        <SidebarBtn onClick={() => router.push('/profile/my-orders')} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />} label="Order History" color="text-blue-400" />
+                        <SidebarBtn onClick={() => router.push('/contact')} icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />} label="Help & Support" color="text-emerald-400" />
                     </div>
                 </div>
                 
-                <div className="text-center">
-                    <button onClick={() => setShowDeleteConfirm(true)} className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors tracking-wide">Delete my account permanently</button>
-                </div>
+                <button onClick={() => setShowDeleteConfirm(true)} className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors tracking-widest uppercase">
+                    Close Account Permanently
+                </button>
             </div>
 
-            {/* --- RIGHT SIDE (Details View) --- */}
-            <div className="w-full md:w-2/3">
-                <div className="bg-white/60 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-xl border border-white/60 relative min-h-[500px]">
-                    <div className="flex justify-between items-center mb-10 pb-6 border-b border-pink-100">
-                        <h2 className="text-3xl font-serif font-bold text-[#4A1D46]">Personal Details</h2>
+            {/* --- MAIN DETAILS --- */}
+            <div className="lg:col-span-8">
+                <div className="bg-white p-8 md:p-10 rounded-3xl shadow-sm border border-slate-200">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900">Personal Information</h2>
+                            <p className="text-slate-400 text-sm font-medium">Verified account details</p>
+                        </div>
                         <button 
                             onClick={openEdit} 
-                            className="text-sm font-bold text-[#880e4f] bg-pink-50 hover:bg-[#880e4f] hover:text-white px-5 py-2.5 rounded-full transition-all border border-pink-200 hover:border-transparent shadow-sm flex items-center gap-2"
+                            className="text-xs font-bold text-slate-600 bg-slate-50 hover:bg-[#ff8a80] hover:text-white px-6 py-3 rounded-2xl transition-all border border-slate-200 hover:border-[#ff8a80] shadow-sm flex items-center gap-2 uppercase tracking-wider"
                         >
-                            <span>✎</span> Edit Details
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            Edit Profile
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                        <DetailRow label="Full Name" value={user.name} width="col-span-1 md:col-span-2" />
-                        <DetailRow label="Email Address" value={user.email} width="col-span-1 md:col-span-2" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <DetailRow label="Full Name" value={user.name} />
+                        <DetailRow label="Email Address" value={user.email} />
                         <DetailRow label="Phone Number" value={user.phone} />
                         <DetailRow label="Gender" value={user.gender} />
-                        <DetailRow label="Date of Birth" value={user.dob} width="col-span-1 md:col-span-2" />
-                        <DetailRow label="Shipping Address" value={user.address} width="col-span-1 md:col-span-2" />
+                        <DetailRow label="Date of Birth" value={user.dob} />
+                        <DetailRow label="Delivery Address" value={user.address} width="col-span-1 md:col-span-2" />
                     </div>
                 </div>
             </div>
         </div>
       </main>
 
-      {/* --- EDIT POPUP MODAL --- */}
+      {/* --- MODALS (STYLING IMPROVED) --- */}
       {showEditModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white/95 backdrop-blur-xl p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-lg w-full border border-white/60 relative animate-scale-up">
-                
-                <button onClick={closeEdit} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl font-bold transition-colors leading-none">✕</button>
-
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-tr from-[#D883B7] to-[#9B5DE5] rounded-full flex items-center justify-center text-3xl text-white shadow-inner mb-3">
-                        ✎
-                    </div>
-                    <h3 className="text-2xl font-serif font-bold text-[#4A1D46]">Edit Profile</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4" onClick={closeEdit}>
+            <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-2xl max-w-lg w-full border border-slate-100 relative animate-scale-up" onClick={e => e.stopPropagation()}>
+                <div className="mb-8">
+                    <h3 className="text-2xl font-bold text-slate-900">Modify Profile</h3>
+                    <p className="text-slate-400 text-sm font-medium mt-1">Update your personal contact information.</p>
                 </div>
 
-                <div className="space-y-5 max-h-[50vh] overflow-y-auto px-2 pb-4 custom-scrollbar">
-                    
-                    {/* Read-Only Email */}
-                    <div className="opacity-60 cursor-not-allowed">
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-3">Email Address</label>
-                        <input type="text" value={editData.email} disabled className="w-full p-3.5 rounded-2xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed font-medium" />
+                <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-2 ml-1">Email (Fixed)</label>
+                        <input type="text" value={editData.email} disabled className="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed font-medium text-sm" />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-3">Full Name</label>
-                        <input type="text" name="name" value={editData.name} onChange={handleEditChange} placeholder="Enter your full name" className="w-full p-3.5 rounded-2xl bg-white border border-pink-100 focus:border-[#9B5DE5] focus:ring-1 focus:ring-[#9B5DE5] outline-none font-medium shadow-sm transition-all text-[#4A1D46]" />
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1">Full Name</label>
+                        <input type="text" name="name" value={editData.name} onChange={handleEditChange} className="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] outline-none font-medium transition-all text-sm" />
                     </div>
 
-                    {/* PHONE NUMBER FIELD WITH FROZEN +94 */}
                     <div>
-                        <label className="block text-xs font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-3">Phone Number</label>
-                        <div className="flex items-center w-full p-3.5 rounded-2xl bg-white border border-pink-100 focus-within:border-[#9B5DE5] focus-within:ring-1 focus-within:ring-[#9B5DE5] shadow-sm transition-all">
-                            <span className="text-gray-400 font-bold mr-2 select-none">+94</span>
-                            <input 
-                                type="text" 
-                                name="phoneNoPrefix" 
-                                value={editData.phoneNoPrefix} 
-                                onChange={handleEditChange} 
-                                maxLength={9} 
-                                placeholder="7XXXXXXXX" 
-                                className="w-full outline-none bg-transparent font-medium text-[#4A1D46]"
-                            />
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1">Phone Number</label>
+                        <div className="flex items-center w-full bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-[#FFAFA8]">
+                            <span className="bg-slate-50 px-4 py-3 text-slate-500 font-bold border-r border-slate-200 text-sm">+94</span>
+                            <input type="text" name="phoneNoPrefix" value={editData.phoneNoPrefix} onChange={handleEditChange} maxLength={9} placeholder="7XXXXXXXX" className="w-full px-4 outline-none bg-transparent font-medium text-sm" />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-3">Shipping Address</label>
-                        <input type="text" name="address" value={editData.address} onChange={handleEditChange} placeholder="Enter your full address" className="w-full p-3.5 rounded-2xl bg-white border border-pink-100 focus:border-[#9B5DE5] focus:ring-1 focus:ring-[#9B5DE5] outline-none font-medium shadow-sm transition-all text-[#4A1D46]" />
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1">Shipping Address</label>
+                        <input type="text" name="address" value={editData.address} onChange={handleEditChange} className="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] outline-none font-medium text-sm" />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-5">
-                        <div className="w-full sm:w-1/2">
-                            <label className="block text-xs font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-3">Date of Birth</label>
-                            <input type="date" name="dob" max={maxDate} value={editData.dob} onChange={handleEditChange} className="w-full p-3.5 rounded-2xl bg-white border border-pink-100 focus:border-[#9B5DE5] focus:ring-1 focus:ring-[#9B5DE5] outline-none font-medium shadow-sm transition-all text-[#4A1D46] cursor-pointer" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1">Birthday</label>
+                            <input type="date" name="dob" max={maxDate} value={editData.dob} onChange={handleEditChange} className="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] outline-none font-medium text-sm" />
                         </div>
-                        <div className="w-full sm:w-1/2">
-                            <label className="block text-xs font-bold text-[#D883B7] uppercase tracking-widest mb-1.5 ml-3">Gender</label>
-                            <select name="gender" value={editData.gender} onChange={handleEditChange} className="w-full p-3.5 rounded-2xl bg-white border border-pink-100 focus:border-[#9B5DE5] focus:ring-1 focus:ring-[#9B5DE5] outline-none font-medium shadow-sm transition-all text-[#4A1D46] cursor-pointer appearance-none">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 ml-1">Gender</label>
+                            <select name="gender" value={editData.gender} onChange={handleEditChange} className="w-full px-5 py-3 rounded-2xl bg-white border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] outline-none font-medium text-sm appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M5%207L10%2012L15%207%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E')] bg-[length:20px_20px] bg-[right_12px_center] bg-no-repeat">
                                 <option value="">Select</option>
                                 <option value="Female">Female</option>
                                 <option value="Male">Male</option>
@@ -316,45 +280,47 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                <div className="flex gap-4 mt-8 pt-6 border-t border-pink-50">
-                    <button onClick={closeEdit} className="flex-1 py-3.5 bg-gray-50 text-gray-500 rounded-full font-bold hover:bg-gray-100 transition-colors border border-gray-200">Discard</button>
-                    <button onClick={saveChanges} className="flex-1 py-3.5 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all">Save Changes</button>
+                <div className="flex gap-3 mt-10 pt-6 border-t border-slate-100">
+                    <button onClick={closeEdit} className="flex-1 py-3 text-slate-500 rounded-xl font-bold hover:bg-slate-50 transition-colors border border-slate-200 text-xs uppercase tracking-widest">Discard</button>
+                    <button onClick={saveChanges} className="flex-1 py-3 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-xl font-bold shadow-md hover:opacity-90 transition-all text-xs uppercase tracking-widest">Save Profile</button>
                 </div>
             </div>
         </div>
       )}
 
-      {/* --- CUSTOM ALERT DIALOG --- */}
+      {/* --- CUSTOM ALERT --- */}
       {alertState.show && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 relative animate-scale-up">
-              <button onClick={() => setAlertState({ ...alertState, show: false })} className="absolute top-5 right-5 text-gray-400 hover:text-[#880e4f] transition-colors p-2 text-xl leading-none">✕</button>
-              
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border 
-                  ${alertState.type === 'success' ? 'bg-green-50 border-green-200 text-green-500' : 'bg-[#FFF9C4] border-[#FFF59D] text-yellow-600'}`}>
-                {alertState.type === 'success' ? '✅' : '⚠️'}
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-100">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm 
+                  ${alertState.type === 'success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
+                {alertState.type === 'success' ? (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                )}
               </div>
-              
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium text-sm">{alertState.message}</p>
-              
-              <button onClick={() => setAlertState({ ...alertState, show: false })} className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full border border-white/20">
-                Continue
+              <h3 className="text-xl font-bold text-slate-900">{alertState.title}</h3>
+              <p className="text-slate-500 mt-2 mb-8 text-sm leading-relaxed">{alertState.message}</p>
+              <button onClick={() => setAlertState({ ...alertState, show: false })} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all text-sm uppercase tracking-widest">
+                Understood
               </button>
            </div>
         </div>
       )}
 
-      {/* --- DELETE CONFIRMATION DIALOG --- */}
+      {/* --- DELETE CONFIRMATION --- */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-scale-up">
-              <div className="w-16 h-16 bg-[#FFEBEE] rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#FFCDD2] text-red-500">💔</div>
-              <h3 className="text-2xl font-serif font-bold text-[#4A1D46] mb-2">Delete Account?</h3>
-              <p className="text-[#7B2C62] font-medium text-sm mb-8">This action cannot be undone. All your data, orders, and wishlist items will be permanently lost.</p>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-100">
+              <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-500 shadow-sm">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">Are you sure?</h3>
+              <p className="text-slate-500 text-sm mt-2 mb-8 leading-relaxed">This will delete all orders and saved items. This cannot be undone.</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">Cancel</button>
-                <button className="flex-1 py-3 bg-gradient-to-r from-[#e53935] to-[#d32f2f] text-white rounded-xl font-bold shadow-lg hover:shadow-red-200 hover:scale-105 transition-all">Yes, Delete</button>
+                <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors text-xs uppercase tracking-widest">Keep Account</button>
+                <button className="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold shadow-md hover:bg-rose-600 transition-all text-xs uppercase tracking-widest">Delete</button>
               </div>
            </div>
         </div>
@@ -363,12 +329,23 @@ export default function ProfilePage() {
   );
 }
 
-// Helper Component for Display Rows
+// Optimized Sidebar Button Helper
+const SidebarBtn = ({ onClick, icon, label, color }: { onClick: () => void, icon: React.ReactNode, label: string, color: string }) => (
+    <button onClick={onClick} className="w-full group p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-[#FFAFA8] hover:bg-[#fffcfc] transition-all flex items-center gap-4">
+        <div className={`p-2.5 rounded-xl bg-slate-50 group-hover:bg-white transition-colors ${color}`}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{icon}</svg>
+        </div>
+        <span className="font-bold text-slate-700 text-sm">{label}</span>
+        <svg className="w-4 h-4 ml-auto text-slate-300 group-hover:text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+    </button>
+);
+
+// Optimized Detail Display Helper
 const DetailRow = ({ label, value, width = "w-full" }: { label: string, value: string, width?: string }) => (
     <div className={width}>
-        <p className="text-[10px] font-bold text-[#D883B7] uppercase mb-1.5 tracking-widest ml-3">{label}</p>
-        <div className="px-5 py-4 bg-white/50 rounded-2xl border border-white/60 text-[#4a1d46] font-medium shadow-sm min-h-[3.5rem] flex items-center">
-            {value || <span className="text-gray-400 italic">Not set</span>}
+        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-[0.15em] ml-1">{label}</p>
+        <div className="px-5 py-4 bg-[#F8FAFC] rounded-2xl border border-slate-100 text-slate-700 font-semibold min-h-[3.5rem] flex items-center text-sm">
+            {value || <span className="text-slate-300 italic font-medium">No information provided</span>}
         </div>
     </div>
 );

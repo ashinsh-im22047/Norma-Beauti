@@ -66,7 +66,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-gray-800 text-sm md:text-lg max-w-xl mx-auto font-medium tracking-wide leading-relaxed">
-            Discover our exclusive collection of premium cosmetics and jewelry designed for the modern muse.
+           Discover our exclusive collection of premium cosmetics, jewelry and beauti items designed for the modern muse.
           </p>
 
           <div className="mt-8">

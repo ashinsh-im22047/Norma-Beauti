@@ -7,6 +7,47 @@ const getTableInfo = (id: string) => {
   return null;
 };
 
+// --- GET METHOD ---
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const info = getTableInfo(id);
+    if (!info) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+    // Fetch main details
+    const [mainRows]: any = await db.query(`SELECT * FROM ${info.table} WHERE ${info.idCol} = ?`, [id]);
+    if (mainRows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const resultData: any = { ...mainRows[0] };
+
+    // If it is an item (gift box), fetch its constituent products safely
+    if (id.startsWith('item_')) {
+        const [productRows]: any = await db.query(`
+          SELECT 
+            p.productid,
+            p.productname,
+            p.productdescription,
+            p.imageurl
+          FROM itemproducts ip
+          JOIN product p ON ip.productid = p.productid
+          WHERE ip.itemid = ?
+        `, [id]);
+
+        resultData.includedProducts = productRows.map((p: any) => ({
+            id: p.productid,
+            name: p.productname,
+            description: p.productdescription,
+            image: p.imageurl
+        }));
+    }
+
+    return NextResponse.json(resultData);
+  } catch (error) {
+    console.error("Fetch Single Item Error:", error);
+    return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
+  }
+}
+
 // DELETE
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,7 +67,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name, price, quantity, description, image, minStock } = body; // --- NEW: Added minStock
+    const { name, price, quantity, description, image, minStock } = body; 
     const info = getTableInfo(id);
     if (!info) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 

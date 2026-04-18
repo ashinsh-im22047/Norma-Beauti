@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AdminHeader from '@/components/AdminHeader'; // Imported your new Admin Header!
+import AdminHeader from '@/components/AdminHeader';
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -97,66 +97,76 @@ export default function NotificationsPage() {
       saveDeleted(newDeleted);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-[#880e4f] bg-[#fff0f5]">Loading Notifications...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFAFA8]"></div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#F3E5F5] to-[#E6E6FA] font-sans pb-20 text-[#2E1029]">
+    <div className="min-h-screen bg-slate-100 font-sans pb-20 text-slate-800">
       
-      {/* --- REPLACED WITH YOUR NEW ADMIN HEADER --- */}
       <AdminHeader />
 
-      <main className="container mx-auto px-6 py-8 max-w-5xl relative z-10">
+      <main className="container mx-auto px-4 md:px-6 py-10 max-w-[1000px] relative z-10">
         
-        {/* --- ELEGANT HERO SECTION (FIXED Z-INDEX) --- */}
-        <div className="relative z-50 bg-[#4A1D46]/90 backdrop-blur-xl rounded-[2rem] p-6 shadow-2xl border border-white/20 mb-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
-            <div>
-                <h2 className="text-3xl font-serif text-white tracking-wide">System Alerts</h2>
-                <p className="text-sm text-[#D883B7] mt-1 font-medium">Monitor low stock warnings and new pending orders.</p>
+        {/* --- ELEGANT HERO SECTION --- */}
+        <div className="relative z-50 bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-slate-100 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#fff5f4] to-transparent rounded-bl-full pointer-events-none opacity-70"></div>
+            
+            <div className="relative z-10">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">System Alerts</h2>
+                <p className="text-sm text-slate-500 mt-2 font-medium">Monitor low stock warnings and new pending orders.</p>
             </div>
             
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-start md:justify-end gap-4 relative z-10 w-full md:w-auto">
                 
                 {/* FILTER DROPDOWN */}
                 <select 
                   value={filter} 
                   onChange={(e) => setFilter(e.target.value)}
-                  className="bg-white/10 text-white px-4 py-3 rounded-full border border-white/20 outline-none text-sm font-bold cursor-pointer hover:bg-white/20 transition-colors shadow-inner"
+                  className="bg-slate-50 text-slate-700 px-5 py-3 rounded-full border border-slate-200 outline-none text-sm font-bold cursor-pointer hover:bg-slate-100 transition-colors shadow-sm focus:ring-2 focus:ring-[#FFAFA8]"
                 >
-                    <option value="all" className="text-[#4A1D46]">All Notifications</option>
-                    <option value="unread" className="text-[#4A1D46]">Unread Only</option>
-                    <option value="read" className="text-[#4A1D46]">Read Only</option>
+                    <option value="all">All Notifications</option>
+                    <option value="unread">Unread Only</option>
+                    <option value="read">Read Only</option>
                 </select>
 
-                <div className="bg-white/10 px-5 py-3 rounded-full border border-white/20 flex items-center gap-3 shadow-inner">
-                    <span className={`text-xl ${unreadCount > 0 ? 'animate-bounce' : ''}`}>🔔</span>
-                    <span className="font-bold text-sm">{unreadCount} Unread</span>
+                <div className={`px-5 py-3 rounded-full border flex items-center gap-2 shadow-sm transition-colors ${unreadCount > 0 ? 'bg-[#fff5f4] border-[#FFAFA8] text-[#ff8a80]' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                    <svg className={`w-5 h-5 ${unreadCount > 0 ? 'animate-bounce' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    <span className="font-bold text-sm tracking-wide">{unreadCount} Unread</span>
                 </div>
                 
                 {/* 3-DOT MENU */}
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button 
                       onClick={() => setShowMenu(!showMenu)} 
-                      className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xl font-bold transition-colors"
+                      className="w-12 h-12 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-[#FFAFA8] hover:border-[#FFAFA8] shadow-sm transition-all"
                     >
-                        ⋮
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                     </button>
                     {showMenu && (
-                        <div className="absolute right-0 top-14 bg-white rounded-2xl shadow-2xl py-2 w-52 border border-gray-100 z-[100] flex flex-col">
+                        <div className="absolute right-0 top-14 bg-white rounded-2xl shadow-xl py-2 w-56 border border-slate-100 z-[100] flex flex-col overflow-hidden">
                             {/* Option 1: Delete Selected */}
-                            <button onClick={() => { handleDeleteSelected(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-[#4A1D46] hover:bg-pink-50 transition flex items-center gap-3">
-                                <span className="text-lg">✓</span> Delete Selected
+                            <button onClick={() => { handleDeleteSelected(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-blue-500 transition-colors flex items-center gap-3">
+                                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                Delete Selected
                             </button>
                             
                             {/* Option 2: Delete Read */}
-                            <button onClick={() => { handleDeleteRead(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-gray-600 hover:bg-gray-50 transition flex items-center gap-3">
-                                <span className="text-lg">📖</span> Delete Read
+                            <button onClick={() => { handleDeleteRead(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-amber-500 transition-colors flex items-center gap-3">
+                                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                Delete Read
                             </button>
                             
-                            <div className="border-t border-gray-100 my-1 mx-2"></div>
+                            <div className="border-t border-slate-100 my-1 mx-3"></div>
                             
                             {/* Option 3: Delete All */}
-                            <button onClick={() => { handleDeleteAll(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition flex items-center gap-3">
-                                <span className="text-lg">🗑️</span> Delete All
+                            <button onClick={() => { handleDeleteAll(); setShowMenu(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-3">
+                                <svg className="w-4 h-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                Delete All
                             </button>
                         </div>
                     )}
@@ -165,14 +175,16 @@ export default function NotificationsPage() {
         </div>
 
         {/* --- NOTIFICATIONS LIST --- */}
-        <div className="flex flex-col gap-5 relative z-10">
+        <div className="flex flex-col gap-4 relative z-10">
           {visibleNotifications.length === 0 ? (
-            <div className="bg-white/60 rounded-[2rem] p-12 text-center border border-white/60 shadow-xl backdrop-blur-md">
-              <div className="text-6xl mb-4">🎉</div>
-              <p className="text-[#880e4f] text-3xl font-serif font-bold">
+            <div className="bg-white rounded-[2.5rem] p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5 border border-slate-100 text-[#FFAFA8]">
+                  <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 tracking-tight mb-2">
                 {filter === 'unread' ? "No unread alerts!" : filter === 'read' ? "No read alerts!" : "All caught up!"}
-              </p>
-              <p className="text-[#7B2C62] text-sm mt-2 font-medium">You have no pending notifications to display here.</p>
+              </h3>
+              <p className="text-slate-500 text-sm font-medium">You have no pending notifications to display here.</p>
             </div>
           ) : (
             visibleNotifications.map((notif) => {
@@ -182,53 +194,64 @@ export default function NotificationsPage() {
               return (
                 <div 
                   key={notif.id} 
-                  className={`p-6 rounded-[2rem] shadow-lg border hover:-translate-y-1 transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group backdrop-blur-md
-                    ${isSelected ? 'bg-pink-50 border-pink-300 scale-[1.01]' : 
+                  className={`p-6 md:p-8 rounded-[2rem] border transition-all duration-300 flex flex-col sm:flex-row sm:items-center justify-between gap-6 group relative overflow-hidden
+                    ${isSelected ? 'bg-[#fffafa] border-[#FFAFA8] shadow-md scale-[1.01]' : 
                       isUnread 
-                        ? 'bg-[#F3E5F5] ring-2 ring-inset ring-[#9B5DE5] shadow-[inset_0_0_15px_rgba(155,93,229,0.1)] border-[#9B5DE5]' 
-                        : 'bg-white/80 border-white/60 hover:shadow-2xl'
+                        ? 'bg-white ring-1 ring-[#FFAFA8]/50 border-[#FFAFA8] shadow-lg' 
+                        : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
                     }
                   `}
                 >
-                  <div className="flex items-center gap-5 relative">
+                  <div className="flex items-start sm:items-center gap-5 relative z-10 w-full min-w-0">
                     {/* CHECKBOX */}
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected} 
-                      onChange={() => toggleSelection(notif.id)} 
-                      className="w-5 h-5 accent-[#9B5DE5] cursor-pointer rounded-md shrink-0 border-gray-300"
-                    />
+                    <div className="relative flex items-center justify-center shrink-0 pt-2 sm:pt-0">
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected} 
+                          onChange={() => toggleSelection(notif.id)} 
+                          className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md checked:bg-[#FFAFA8] checked:border-[#FFAFA8] transition-all cursor-pointer shadow-sm"
+                        />
+                        <svg className="absolute w-3.5 h-3.5 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
 
                     {/* NEW Badge */}
                     {isUnread && (
-                        <div className="absolute -top-8 left-6 bg-[#9B5DE5] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md animate-pulse">
+                        <div className="absolute -top-3 sm:-top-4 left-10 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-sm tracking-widest">
                             NEW
                         </div>
                     )}
                     
-                    <div className={`w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-2xl shadow-inner border-2 transition-all duration-300 ${
+                    {/* Icon Circle */}
+                    <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       notif.type === 'Warning' 
-                        ? (isUnread ? 'bg-red-100 text-red-600 border-red-300' : 'bg-red-50 text-red-500 border-red-200 group-hover:bg-red-100 group-hover:scale-110')
-                        : (isUnread ? 'bg-blue-100 text-blue-600 border-blue-300' : 'bg-[#F3E5F5] text-[#9B5DE5] border-[#D883B7] group-hover:bg-[#E6E6FA] group-hover:scale-110')
+                        ? (isUnread ? 'bg-rose-50 text-rose-500 border-rose-200' : 'bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-rose-50 group-hover:text-rose-400')
+                        : (isUnread ? 'bg-blue-50 text-blue-500 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-400')
                     }`}>
-                      {notif.type === 'Warning' ? '⚠️' : '📦'}
+                      {notif.type === 'Warning' ? (
+                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      ) : (
+                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                      )}
                     </div>
-                    <div>
-                      <h4 className={`font-bold text-lg mb-0.5 transition-colors ${isUnread ? 'text-[#4A1D46]' : 'text-[#4A1D46] group-hover:text-[#880e4f]'}`}>
+
+                    {/* Text Content */}
+                    <div className="min-w-0 pr-4">
+                      <h4 className={`font-bold text-base sm:text-lg mb-1 truncate transition-colors ${isUnread ? 'text-slate-900' : 'text-slate-700 group-hover:text-[#ff8a80]'}`}>
                         {notif.title}
                       </h4>
-                      <p className={`text-sm font-medium leading-relaxed ${isUnread ? 'text-[#4A1D46]' : 'text-[#7B2C62]'}`}>
+                      <p className={`text-xs sm:text-sm font-medium leading-relaxed ${isUnread ? 'text-slate-600' : 'text-slate-500'}`}>
                         {notif.message}
                       </p>
                     </div>
                   </div>
                   
+                  {/* Action Button */}
                   <button 
                     onClick={() => handleViewClick(notif)}
-                    className={`px-8 py-3 rounded-full font-bold text-sm shadow-md whitespace-nowrap shrink-0 border transition-all ${
+                    className={`px-6 py-2.5 rounded-full font-bold text-xs sm:text-sm shadow-sm whitespace-nowrap shrink-0 border transition-all relative z-10 ${
                         isUnread 
-                        ? 'bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white border-white/20 hover:scale-105'
-                        : 'bg-white text-[#880e4f] border-pink-200 hover:bg-pink-50'
+                        ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white border-transparent hover:shadow-md hover:scale-105'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8]'
                     }`}
                   >
                     View Details

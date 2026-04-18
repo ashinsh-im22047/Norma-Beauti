@@ -179,7 +179,6 @@ export default function ShopPage() {
   const nextOfferSlide = () => setOfferSlideIndex(prev => (prev + itemsPerSlide < categoryOffers.length ? prev + 1 : 0));
   const prevOfferSlide = () => setOfferSlideIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, categoryOffers.length - itemsPerSlide)));
 
-  // --- STRICT PRODUCT CARD BADGE LOGIC & SMART PRICING ---
   const ProductCard = ({ item }: { item: any }) => {
     const imgUrl = item.imageurl || item.image || (item.images && item.images.length > 0 ? item.images[0] : null);
     const itemName = item.name || item.productname || item.itemname;
@@ -187,7 +186,6 @@ export default function ShopPage() {
     
     let { originalPrice, finalPrice, isDiscounted, badgeText } = getPriceDetails(item);
 
-    // --- BULLETPROOF VARIANT PARSER ---
     let parsedVariants: any[] = [];
     if (item.variants) {
         try {
@@ -200,17 +198,12 @@ export default function ShopPage() {
     let displayPriceText = `LKR ${finalPrice.toLocaleString()}`;
     let displayOriginalPriceText = `LKR ${originalPrice.toLocaleString()}`;
     
-    // --- UPDATED LOGIC: Always check for variants regardless of base price ---
     if (parsedVariants.length > 0) {
-        // Map variants and filter out any NaN or 0 values
-        const validPrices = parsedVariants
-            .map((v: any) => parseFloat(v.price))
-            .filter((p: number) => !isNaN(p) && p > 0);
-        
+        const validPrices = parsedVariants.map((v: any) => parseFloat(v.price)).filter((p: number) => !isNaN(p) && p > 0);
         if (validPrices.length > 0) {
             const lowestVariantPrice = Math.min(...validPrices);
-            displayPriceText = `Starting from LKR ${lowestVariantPrice.toLocaleString()}`;
-            displayOriginalPriceText = ``; // Hide original price for variant ranges to avoid confusion
+            displayPriceText = `Starting LKR ${lowestVariantPrice.toLocaleString()}`;
+            displayOriginalPriceText = ``; 
         }
     }
 
@@ -220,66 +213,39 @@ export default function ShopPage() {
     return (
         <div 
             onClick={() => setSelectedProduct({ ...item, description: itemDesc, variants: parsedVariants })}
-            className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group border border-white/50 flex flex-col h-full relative cursor-pointer"
+            className="bg-[#fffafa] rounded-xl shadow hover:shadow-lg transition-all duration-300 overflow-hidden group border border-[#F76D82]/20 flex flex-col h-full relative cursor-pointer"
         >
-            <div className="h-44 bg-gradient-to-b from-white to-[#fff0f5] relative overflow-hidden flex items-center justify-center">
-                {imgUrl && imgUrl.startsWith('http') ? (
-                    <img src={imgUrl} alt={itemName} className="w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-in-out" />
-                ) : <span className="text-3xl text-gray-300">📷</span>}
+            <div className="h-40 bg-white relative overflow-hidden flex items-center justify-center">
+                {imgUrl ? (
+                    <img src={imgUrl} alt={itemName} className="w-full h-full object-cover group-hover:scale-105 transition duration-500 ease-in-out" />
+                ) : <svg className="w-8 h-8 text-[#F76D82]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
                 
                 {isNew && !isPromo && (
-                    <div className="absolute top-3 right-3 bg-gradient-to-r from-[#e91e63] to-[#ff4081] text-white text-[9px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider z-10">NEW</div>
+                    <div className="absolute top-2 right-2 bg-[#EC5564] text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 uppercase">NEW</div>
                 )}
                 
                 {isPromo && badgeText && (
-                    <div className={`absolute top-3 left-3 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg tracking-wider animate-bounce z-10
-                        ${item.offer_type === 'BOGO' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : 
-                          item.offer_type === 'FIXED' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 
-                          'bg-gradient-to-r from-[#880e4f] to-[#e91e63]'}`}
-                    >
+                    <div className="absolute top-2 left-2 bg-[#D94452] text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 uppercase animate-pulse">
                         {badgeText}
                     </div>
                 )}
-
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-                    <span className="text-xs font-bold text-white bg-black/40 px-4 py-1.5 rounded-full backdrop-blur-sm shadow-lg border border-white/20">View Details</span>
-                </div>
             </div>
 
-            <div className="p-4 flex flex-col gap-1 flex-grow">
-                <h4 className="font-serif font-bold text-base text-[#880e4f] truncate tracking-wide">{itemName}</h4>
-                <p className="text-[10px] text-gray-500 line-clamp-2 flex-grow italic">{itemDesc}</p>
-                <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#f8bbd0]/30">
-                    
-                    <div className="flex flex-col leading-tight">
+            <div className="p-3 flex flex-col gap-1 flex-grow">
+                <h4 className="font-bold text-xs text-[#D94452] truncate uppercase tracking-tighter">{itemName}</h4>
+                <div className="flex justify-between items-center mt-auto pt-2 border-t border-[#F76D82]/10">
+                    <div className="flex flex-col">
                         {isPromo && isDiscounted ? (
                             <>
-                                {displayOriginalPriceText && <span className="text-[10px] text-gray-400 line-through">{displayOriginalPriceText}</span>}
-                                <span className="text-sm font-bold text-red-600">{displayPriceText}</span>
-                            </>
-                        ) : isPromo && item.offer_type === 'BOGO' ? (
-                            <>
-                                <span className="text-[9px] text-[#e91e63] font-bold uppercase tracking-wider">{item.offername}</span>
-                                <span className="text-sm font-bold text-[#ad1457]">{displayPriceText}</span>
+                                {displayOriginalPriceText && <span className="text-[9px] text-[#F76D82]/60 line-through">{displayOriginalPriceText}</span>}
+                                <span className="text-[11px] font-bold text-[#D94452]">{displayPriceText}</span>
                             </>
                         ) : (
-                            <span className="text-sm font-bold text-[#ad1457]">{displayPriceText}</span>
+                            <span className="text-[11px] font-bold text-[#EC5564]">{displayPriceText}</span>
                         )}
                     </div>
-
-                    <button 
-                        onClick={(e) => { 
-                            e.stopPropagation(); 
-                            if (parsedVariants.length > 0) {
-                                setSelectedProduct({ ...item, description: itemDesc, variants: parsedVariants });
-                            } else {
-                                handleAddToCart(item, 1); 
-                            }
-                        }}
-                        className="bg-[#880e4f] text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-gradient-to-r hover:from-[#e91e63] hover:to-[#ff4081] transition-all shadow-md text-sm z-10 relative"
-                        title={parsedVariants.length > 0 ? "Select Options" : "Add to Cart"}
-                    >
-                    {parsedVariants.length > 0 ? "..." : "+"}
+                    <button className="bg-[#EC5564] text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-[#D94452] transition-colors shadow-sm">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
                     </button>
                 </div>
             </div>
@@ -290,127 +256,122 @@ export default function ShopPage() {
   const showFilters = activeCategory === 'cat_ready_box' || activeCategory === 'cat_custom_box' || searchTerm.trim().length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-[#fff0f5] to-[#fce4ec] font-sans text-[#4a1d46]">
+    <div className="min-h-screen bg-[#fff5f5] font-sans text-slate-800">
       <CustomerHeader /> 
 
-      <header className="relative pt-10 pb-16 px-4 text-center bg-cover bg-center shadow-md" style={{ backgroundImage: "url('/backgroundHeaderHome.jpg')" }}>
-        <div className="absolute inset-0 bg-[#880e4f]/40 backdrop-blur-[1px]"></div>
+      {/* GRADIENT HEADER - NO WHITE */}
+      <header className="relative pt-8 pb-10 px-4 text-center bg-gradient-to-r from-[#F76D82] via-[#EC5564] to-[#D94452] shadow-inner overflow-hidden">
+        <div className="absolute inset-0 bg-black/10 opacity-20"></div>
         <div className="relative z-10 max-w-4xl mx-auto text-white">
-          <h2 className="text-3xl md:text-5xl font-serif mb-2 text-shadow-lg tracking-wide">Find Your Perfect Look</h2>
-          <p className="text-[#f8bbd0] text-sm md:text-base font-light tracking-widest uppercase">Premium Cosmetics & Jewelry</p>
+          <h2 className="text-2xl md:text-4xl font-bold tracking-tight uppercase">Find Your Perfect Look</h2>
+          <p className="text-[#fffafa]/80 text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">Premium Cosmetics & Jewelry</p>
         </div>
       </header>
 
-      <div className="sticky top-[72px] z-40 bg-[#880e4f]/90 backdrop-blur-md shadow-xl border-y border-white/10 py-4 transition-all duration-300">
+      {/* Search & Categories Bar */}
+      <div className="sticky top-[72px] z-40 bg-[#EC5564]/95 backdrop-blur-md shadow-md py-3">
          <div className="container mx-auto px-4">
-             <div className="flex flex-col lg:flex-row gap-4 items-center justify-center max-w-7xl mx-auto">
-                 <div className="w-full md:w-72 relative flex-shrink-0">
-                    <span className="absolute left-4 top-2.5 text-[#e91e63]">🔍</span>
+             <div className="flex flex-col md:flex-row gap-3 items-center justify-between max-w-6xl mx-auto">
+                 <div className="w-full md:w-64 relative">
+                    <svg className="w-4 h-4 text-[#F76D82] absolute left-3.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 rounded-full bg-[#fff0f5] text-[#880e4f] font-bold text-sm placeholder-[#e91e63]/50 focus:outline-none focus:ring-2 focus:ring-[#f06292] shadow-inner"/>
+                      className="w-full pl-10 pr-4 py-1.5 rounded-full bg-[#fffafa] text-[#D94452] font-bold text-xs placeholder-[#F76D82]/50 focus:outline-none focus:ring-2 focus:ring-[#F76D82]"/>
                  </div>
                  
-                 {showFilters && (
-                     <div className="flex gap-2 w-full md:w-auto flex-shrink-0 justify-center animate-fade-in items-center">
-                        <input type="number" placeholder="Min Rs." value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-24 px-3 py-2 rounded-full bg-white/10 text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#f06292] text-xs font-medium text-center" />
-                        <span className="text-white/50">-</span>
-                        <input type="number" placeholder="Max Rs." value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-24 px-3 py-2 rounded-full bg-white/10 text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-[#f06292] text-xs font-medium text-center"/>
-                        <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="px-4 py-2 rounded-full bg-white/10 text-white font-medium text-xs cursor-pointer focus:outline-none hover:bg-white/20 transition text-center border border-white/20">
-                            <option value="newest">Newest First</option>
-                            <option value="price-low">Price Low-High</option>
-                            <option value="price-high">Price High-Low</option>
-                        </select>
-                     </div>
-                 )}
-
-                 <div className="flex gap-2 w-full md:w-auto justify-center flex-shrink-0">
-                    <select value={activeCategory} onChange={(e) => setActiveCategory(e.target.value)} className="px-4 py-2 rounded-full bg-white/10 text-white font-medium text-xs cursor-pointer focus:outline-none hover:bg-white/20 transition text-center border border-white/20">
-                        {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id} className="text-black">{cat.name}</option>)}
+                 <div className="flex flex-wrap items-center justify-center gap-2">
+                    {showFilters && (
+                        <div className="flex items-center gap-1 bg-[#fffafa]/20 rounded-full px-3 py-1 border border-white/30">
+                            <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center" />
+                            <span className="text-white/50">-</span>
+                            <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center"/>
+                        </div>
+                    )}
+                    <select value={activeCategory} onChange={(e) => setActiveCategory(e.target.value)} className="pl-4 pr-8 py-1.5 rounded-full bg-[#D94452] text-white font-bold text-[10px] cursor-pointer hover:bg-black/20 transition-all outline-none border border-white/20">
+                        {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                     </select>
                  </div>
              </div>
          </div>
       </div>
 
-      <main className="container mx-auto px-6 py-10 relative z-20">
+      <main className="container mx-auto px-4 md:px-6 py-8 relative z-20">
         
-        {/* --- DYNAMIC OFFERS SLIDER --- */}
-        {!searchTerm && categoryOffers.length > 0 && (
-            <div className="mb-20 bg-gradient-to-r from-[#ff7e5f] via-[#e91e63] to-[#880e4f] p-8 rounded-[2.5rem] shadow-2xl border border-white/20 relative animate-fade-in-up">
-                <div className="absolute top-0 right-10 bg-yellow-400 text-black px-4 py-1 rounded-b-xl text-xs font-bold shadow-md tracking-widest uppercase">Limited Time</div>
-                <div className="flex items-center justify-between mb-8 relative z-10">
-                    <button onClick={prevOfferSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#e91e63] transition-all flex items-center justify-center text-xl group"><span className="group-hover:-translate-x-0.5 transition-transform">&lt;</span></button>
-                    <div className="text-center">
-                        <h3 className="text-3xl font-serif font-bold text-white tracking-widest mb-1">Exclusive Offers</h3>
-                        <p className="text-white/80 text-xs tracking-widest uppercase">
-                            {activeCategory === 'all' ? "Grab them before they're gone!" : `Deals on ${CATEGORIES.find(c => c.id === activeCategory)?.name}`}
-                        </p>
-                        <div className="h-0.5 w-24 bg-white/30 mx-auto mt-2"></div>
-                    </div>
-                    <button onClick={nextOfferSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#e91e63] transition-all flex items-center justify-center text-xl group"><span className="group-hover:translate-x-0.5 transition-transform">&gt;</span></button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                    {categoryOffers.slice(offerSlideIndex, offerSlideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`offer-${item.id}-${idx}`} item={item} />)}
-                </div>
-            </div>
-        )}
-
-        {/* --- NEW ARRIVALS SLIDER --- */}
+        {/* NEW ARRIVALS - COMPACT GRADIENT BOX */}
         {!searchTerm && categoryNewArrivals.length > 0 && (
-            <div className="mb-14 bg-gradient-to-r from-[#880e4f] via-[#ad1457] to-[#d81b60] p-8 rounded-[2.5rem] shadow-2xl border border-white/20 relative animate-fade-in-up">
-                <div className="flex items-center justify-between mb-8 relative z-10">
-                    <button onClick={prevSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#ad1457] transition-all flex items-center justify-center text-xl group"><span className="group-hover:-translate-x-0.5 transition-transform">&lt;</span></button>
+            <div className="mb-10 bg-gradient-to-br from-[#F76D82] to-[#EC5564] p-6 rounded-3xl shadow-xl relative">
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={prevSlide} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white hover:text-[#EC5564] transition-all flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></button>
                     <div className="text-center">
-                        <h3 className="text-3xl font-serif font-bold text-white tracking-widest mb-1">New Arrivals</h3>
-                        <p className="text-white/70 text-xs tracking-widest uppercase">
-                           {activeCategory === 'all' ? 'All Collections' : CATEGORIES.find(c => c.id === activeCategory)?.name}
-                        </p>
-                        <div className="h-0.5 w-24 bg-gradient-to-r from-transparent via-[#f48fb1] to-transparent mx-auto mt-2"></div>
+                        <h3 className="text-lg md:text-xl font-bold text-white uppercase tracking-tighter">New Arrivals</h3>
                     </div>
-                    <button onClick={nextSlide} className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-lg hover:bg-white hover:text-[#ad1457] transition-all flex items-center justify-center text-xl group"><span className="group-hover:translate-x-0.5 transition-transform">&gt;</span></button>
+                    <button onClick={nextSlide} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white hover:text-[#EC5564] transition-all flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></button>
                 </div>
-                {isLoadingProducts ? <p className="text-sm text-center text-white/70">Loading masterpieces...</p> : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                        {categoryNewArrivals.slice(slideIndex, slideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`new-${item.id || item.productid || item.itemid}-${idx}`} item={item} />)}
-                    </div>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {categoryNewArrivals.slice(slideIndex, slideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`new-${idx}`} item={item} />)}
+                </div>
             </div>
         )}
 
-        {/* ALL / FILTERED PRODUCTS GRID */}
-        <div className="bg-white/40 backdrop-blur-xl p-8 rounded-[2rem] shadow-xl border border-white/60 min-h-[500px]">
-            <div className="mb-8 flex flex-col items-start relative">
-                <div className="flex items-center gap-4 w-full">
-                    <h3 className="text-2xl font-serif font-bold text-[#880e4f]">
-                        {searchTerm ? `Results for "${searchTerm}"` : activeCategory === 'cat_custom_box' ? 'Available Products' : CATEGORIES.find(c => c.id === activeCategory)?.name}
-                    </h3>
-                    <div className="h-[1px] flex-grow bg-gradient-to-r from-[#ec407a]/50 to-transparent"></div>
+        {/* OFFERS - COMPACT GRADIENT BOX */}
+        {!searchTerm && categoryOffers.length > 0 && (
+            <div className="mb-10 bg-gradient-to-br from-[#EC5564] to-[#D94452] p-6 rounded-3xl shadow-xl relative border-t-4 border-white/20">
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={prevOfferSlide} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white hover:text-[#D94452] transition-all flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></button>
+                    <div className="text-center">
+                        <h3 className="text-lg md:text-xl font-bold text-white uppercase tracking-tighter">Exclusive Offers</h3>
+                    </div>
+                    <button onClick={nextOfferSlide} className="w-8 h-8 rounded-full bg-white/20 text-white hover:bg-white hover:text-[#D94452] transition-all flex items-center justify-center"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></button>
                 </div>
-                {activeCategory === 'cat_custom_box' && !searchTerm && (<p className="text-sm text-[#ad1457] mt-1 font-medium italic">Create your own box of happiness.</p>)}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {categoryOffers.slice(offerSlideIndex, offerSlideIndex + itemsPerSlide).map((item, idx) => <ProductCard key={`offer-${idx}`} item={item} />)}
+                </div>
             </div>
-            {isLoadingProducts ? (<div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ec407a]"></div></div>) : (<div className="grid grid-cols-2 md:grid-cols-4 gap-6">{filteredProducts.length > 0 ? (filteredProducts.map(item => <ProductCard key={item.id || item.productid || item.itemid} item={item} />)) : (<div className="col-span-full text-center py-20 flex flex-col items-center"><span className="text-4xl mb-2">🌸</span><p className="text-[#880e4f] font-serif italic">No treasures found.</p></div>)}</div>)}
+        )}
+
+        {/* MAIN PRODUCT GRID - NO WHITE BACKGROUND */}
+        <div className="bg-[#fffafa] p-6 rounded-3xl shadow-sm border border-[#F76D82]/10 min-h-[400px]">
+            <div className="mb-6 flex items-center justify-between border-b border-[#F76D82]/10 pb-3">
+                <h3 className="text-xl font-bold text-[#D94452] uppercase tracking-tighter">
+                    {searchTerm ? `Search: "${searchTerm}"` : activeCategory === 'all' ? 'All Masterpieces' : CATEGORIES.find(c => c.id === activeCategory)?.name}
+                </h3>
+            </div>
+            
+            {isLoadingProducts ? (
+                <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#EC5564]"></div></div>
+            ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    {filteredProducts.length > 0 ? (
+                        filteredProducts.map(item => <ProductCard key={item.id || item.productid || item.itemid} item={item} />)
+                    ) : (
+                        <div className="col-span-full py-20 flex flex-col items-center opacity-40">
+                            <svg className="w-12 h-12 text-[#D94452] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                            <p className="text-[#D94452] font-bold text-sm">No items found.</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
       </main>
 
+      {/* Modals & Alerts */}
       {selectedProduct && (
-          <ProductDetailsModal 
-              product={selectedProduct} 
-              onClose={() => setSelectedProduct(null)} 
-              onAddToCart={handleAddToCart}
-          />
+          <ProductDetailsModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAddToCart={handleAddToCart} />
       )}
 
       {alertState.show && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-           <div className="bg-white/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center border border-white/60 animate-fade-in-up relative">
-              <button onClick={dismissAlert} className="absolute top-5 right-5 text-gray-400 hover:text-[#880e4f] transition-colors p-2 text-xl leading-none" aria-label="Close">✕</button>
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner border border-[#F8BBD0] ${alertState.type === 'success' ? 'bg-[#FCE4EC]' : 'bg-[#FFF9C4]'}`}>
-                {alertState.type === 'success' ? '🛍️' : '⚠️'}
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-xs w-full text-center border-t-8 border-[#EC5564]">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 border-2 ${alertState.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-500' : 'bg-rose-50 border-rose-200 text-rose-500'}`}>
+                {alertState.type === 'success' ? (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                )}
               </div>
-              <h3 className="text-2xl font-serif font-bold mb-2 text-[#4A1D46]">{alertState.title}</h3>
-              <p className="text-[#7B2C62] mb-8 font-medium">{alertState.message}</p>
-              <button onClick={closeAlert} className="px-10 py-3 bg-gradient-to-r from-[#D883B7] to-[#9B5DE5] text-white rounded-full font-bold shadow-lg hover:opacity-90 hover:scale-105 transition-all w-full">
-                {alertState.redirect ? 'Login Now' : 'Continue Shopping'}
+              <h3 className="text-lg font-bold text-slate-900 mb-2">{alertState.title}</h3>
+              <p className="text-slate-500 text-xs mb-6 leading-relaxed">{alertState.message}</p>
+              <button onClick={closeAlert} className="px-8 py-2.5 bg-gradient-to-r from-[#F76D82] to-[#D94452] text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full text-[10px] uppercase tracking-widest">
+                {alertState.redirect ? 'Go to Login' : 'Dismiss'}
               </button>
            </div>
         </div>
