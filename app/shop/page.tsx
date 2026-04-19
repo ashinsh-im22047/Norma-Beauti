@@ -167,7 +167,7 @@ export default function ShopPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add to cart');
 
-      setAlertState({ show: true, title: 'Added to Bag', message: `${quantity}x ${item.name || item.productname || item.itemname} added to your shopping bag.`, type: 'success', redirect: '' });
+      setAlertState({ show: true, title: 'Added to Cart', message: `${quantity}x ${item.name || item.productname || item.itemname} added to your shopping bag.`, type: 'success', redirect: '' });
     } catch (error: any) {
       setAlertState({ show: true, title: 'Error', message: error.message || 'Something went wrong.', type: 'error', redirect: '' });
     }
@@ -253,7 +253,9 @@ export default function ShopPage() {
     );
   };
 
-  const showFilters = activeCategory === 'cat_ready_box' || activeCategory === 'cat_custom_box' || searchTerm.trim().length > 0;
+  // --- NEW: LOGIC TO HIDE FILTERS WHEN 'ALL' IS SELECTED ---
+  const isAllCategory = activeCategory === 'all';
+  const showFilters = !isAllCategory && (activeCategory === 'cat_ready_box' || activeCategory === 'cat_custom_box' || activeCategory === 'cat_individual' || searchTerm.trim().length > 0);
 
   return (
     <div className="min-h-screen bg-[#fff5f5] font-sans text-slate-800">
@@ -279,13 +281,23 @@ export default function ShopPage() {
                  </div>
                  
                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {/* FILTER AND SORT OPTIONS (Hidden if 'all' is selected) */}
                     {showFilters && (
-                        <div className="flex items-center gap-1 bg-[#fffafa]/20 rounded-full px-3 py-1 border border-white/30">
-                            <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center" />
-                            <span className="text-white/50">-</span>
-                            <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center"/>
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-[#fffafa]/20 rounded-full px-3 py-1 border border-white/30">
+                                <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center" />
+                                <span className="text-white/50">-</span>
+                                <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-12 bg-transparent text-white placeholder-white/60 text-[10px] outline-none text-center"/>
+                            </div>
+                            
+                            <select value={sortOption} onChange={(e) => setSortOption(e.target.value)} className="pl-3 pr-6 py-1.5 rounded-full bg-[#fffafa]/20 text-white font-bold text-[10px] cursor-pointer hover:bg-black/20 transition-all outline-none border border-white/30">
+                                <option value="newest" className="text-slate-800">Newest First</option>
+                                <option value="price-low" className="text-slate-800">Price: Low to High</option>
+                                <option value="price-high" className="text-slate-800">Price: High to Low</option>
+                            </select>
                         </div>
                     )}
+
                     <select value={activeCategory} onChange={(e) => setActiveCategory(e.target.value)} className="pl-4 pr-8 py-1.5 rounded-full bg-[#D94452] text-white font-bold text-[10px] cursor-pointer hover:bg-black/20 transition-all outline-none border border-white/20">
                         {CATEGORIES.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                     </select>
@@ -371,7 +383,7 @@ export default function ShopPage() {
               <h3 className="text-lg font-bold text-slate-900 mb-2">{alertState.title}</h3>
               <p className="text-slate-500 text-xs mb-6 leading-relaxed">{alertState.message}</p>
               <button onClick={closeAlert} className="px-8 py-2.5 bg-gradient-to-r from-[#F76D82] to-[#D94452] text-white rounded-full font-bold shadow-lg hover:scale-105 transition-all w-full text-[10px] uppercase tracking-widest">
-                {alertState.redirect ? 'Go to Login' : 'Dismiss'}
+                {alertState.redirect ? 'Go to Login' : 'OK'}
               </button>
            </div>
         </div>

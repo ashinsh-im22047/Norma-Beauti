@@ -5,9 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import AdminHeader from '@/components/AdminHeader';
 
 // --- DATA TYPES ---
-type FeatureValue = { name: string; image: string; file?: File | null };
+type FeatureValue = { name: string };
 type FeatureGroup = { name: string; values: FeatureValue[] };
-type ProductVariant = { combo: string[]; price: string; quantity: string };
+type ProductVariant = { combo: string[]; price: string; quantity: string; image: string; file?: File | null };
 type SelectedProduct = { id: string; qty: number }; 
 
 // --- BUG FIX: SAFE JSON PARSER ---
@@ -133,7 +133,7 @@ function ProductListContent() {
       setFormData(prev => {
           const newVariants = combinations.map(combo => {
               const existing = prev.variants.find(v => JSON.stringify(v.combo) === JSON.stringify(combo));
-              return existing || { combo, price: prev.price || '', quantity: '' };
+              return existing || { combo, price: prev.price || '', quantity: '', image: '' };
           });
           if (JSON.stringify(prev.variants.map(v=>v.combo)) !== JSON.stringify(newVariants.map(v=>v.combo))) return { ...prev, variants: newVariants };
           return prev;
@@ -197,22 +197,22 @@ function ProductListContent() {
   const { pending, approved, standard } = getLists();
 
   // Handlers
-  const addFeatureGroup = () => setFormData(prev => ({ ...prev, features: [...prev.features, { name: '', values: [{ name: '', image: '', file: null }] }] }));
+  const addFeatureGroup = () => setFormData(prev => ({ ...prev, features: [...prev.features, { name: '', values: [{ name: '' }] }] }));
   const removeFeatureGroup = (index: number) => setFormData(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== index) }));
   const updateFeatureGroupName = (index: number, name: string) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[index].name = name; return { ...prev, features: newFeatures }; });
-  const addFeatureValue = (groupIndex: number) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values = [...newFeatures[groupIndex].values, { name: '', image: '', file: null }]; return { ...prev, features: newFeatures }; });
+  const addFeatureValue = (groupIndex: number) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values = [...newFeatures[groupIndex].values, { name: '' }]; return { ...prev, features: newFeatures }; });
   const removeFeatureValue = (groupIndex: number, valueIndex: number) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values = newFeatures[groupIndex].values.filter((_, i) => i !== valueIndex); return { ...prev, features: newFeatures }; });
   const updateFeatureValueName = (groupIndex: number, valueIndex: number, name: string) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values[valueIndex].name = name; return { ...prev, features: newFeatures }; });
   
-  const handleFeatureImageChange = (groupIndex: number, valueIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values[valueIndex].file = file; return { ...prev, features: newFeatures }; });
-      }
-  };
-
+  // Variant Handlers
   const updateVariantPrice = (idx: number, val: string) => { setFormData(prev => { const newV = [...prev.variants]; newV[idx].price = val; return {...prev, variants: newV}; }); };
   const updateVariantQty = (idx: number, val: string) => { setFormData(prev => { const newV = [...prev.variants]; newV[idx].quantity = val; return {...prev, variants: newV}; }); };
+  const handleVariantImageChange = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setFormData(prev => { const newV = [...prev.variants]; newV[idx].file = file; return { ...prev, variants: newV }; });
+      }
+  };
 
   const handleSave = async () => {
       if (!formData.name) return showAlert("Missing Input", "Please fill in the Name field.");
@@ -240,26 +240,22 @@ function ProductListContent() {
         );
         const finalImageUrls = [...formData.images, ...newFileUrls]; 
 
-        const processedFeatures = await Promise.all(
-            formData.features.map(async (featureGroup) => {
-                const processedValues = await Promise.all(
-                    featureGroup.values.map(async (val) => {
-                        if (val.file) {
-                            const fd = new FormData(); fd.set('file', val.file);
-                            const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
-                            const uploadedData = await uploadRes.json();
-                            return { name: val.name, image: uploadedData.url }; 
-                        }
-                        return { name: val.name, image: val.image };
-                    })
-                );
-                return { name: featureGroup.name, values: processedValues };
+        // Upload Variant Images
+        const processedVariants = await Promise.all(
+            formData.variants.map(async (variant) => {
+                if (variant.file) {
+                    const fd = new FormData(); fd.set('file', variant.file);
+                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd });
+                    const uploadedData = await uploadRes.json();
+                    return { combo: variant.combo, price: variant.price, quantity: variant.quantity, image: uploadedData.url }; 
+                }
+                return { combo: variant.combo, price: variant.price, quantity: variant.quantity, image: variant.image || '' };
             })
         );
 
         const payload = {
             name: formData.name, price: finalPrice, quantity: finalQuantity, minStock: formData.minStock, description: formData.description, 
-            image: finalImageUrls[0] || '', images: finalImageUrls, features: processedFeatures, variants: formData.variants, 
+            image: finalImageUrls[0] || '', images: finalImageUrls, features: formData.features, variants: processedVariants,
             includedProducts: isReadyMade ? formData.selectedProducts : [] 
         };
 
@@ -318,7 +314,7 @@ function ProductListContent() {
       const existingImages = Array.isArray(item.images) && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
       
       const safeFeatures = safeParseArray(item.features);
-      const mappedFeatures = safeFeatures.map((f: any) => ({ name: f.name, values: f.values.map((v: any) => typeof v === 'string' ? { name: v, image: '', file: null } : v) }));
+      const mappedFeatures = safeFeatures.map((f: any) => ({ name: f.name, values: f.values.map((v: any) => typeof v === 'string' ? { name: v } : v) }));
       const mappedSelectedProducts = (item.includedProducts || []).map((p: any) => { if (typeof p === 'string') return { id: p, qty: 1 }; return p; });
 
       setFormData({ 
@@ -425,7 +421,7 @@ function ProductListContent() {
                 <img src={displayImg} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
             ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300">
-                    <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
                 </div>
             )}
             
@@ -457,9 +453,23 @@ function ProductListContent() {
             <div onClick={() => openPreview([])}>
                 <p className="text-[10px] text-slate-400 font-mono tracking-widest mb-1.5 uppercase">ID: {cardId}</p>
                 <h3 className="font-bold text-slate-800 text-lg leading-tight mb-2 line-clamp-2 group-hover:text-[#ff8a80] transition-colors">{item.name || item.productname || item.itemname}</h3>
+                
+                {/* Variant Breakdown */}
+                {safeVariants.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {safeVariants.slice(0, 3).map((v: any, idx: number) => (
+                            <span key={idx} className="text-[10px] bg-slate-50 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full font-medium">
+                                {v.combo.join('/')}: <strong className={parseInt(v.quantity) > 0 ? "text-slate-700" : "text-rose-500"}>{v.quantity}</strong>
+                            </span>
+                        ))}
+                        {safeVariants.length > 3 && <span className="text-[10px] text-slate-400 ml-1">+{safeVariants.length - 3} more</span>}
+                    </div>
+                )}
             </div>
             
-            <ReviewLoader item={item} onClick={openPreview} />
+            <div className="mt-2">
+               <ReviewLoader item={item} onClick={openPreview} />
+            </div>
 
             <div className="mt-auto flex items-end justify-between" onClick={() => openPreview([])}>
                 <div>
@@ -558,48 +568,22 @@ function ProductListContent() {
             <div className={`grid gap-6 overflow-y-auto pr-2 custom-scrollbar flex-1 ${isReadyMade ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                 
                 <div className="flex flex-col gap-5">
+                   
+                   {/* 1. Name */}
                    <div>
                        <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Name</label>
                        <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 rounded-full px-5 py-3 outline-none border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 transition-all"/>
                    </div>
-                   <div className="flex gap-4">
-                       <div className="flex-1">
-                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Price</label>
-                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/>
-                       </div>
-                       <div className="flex-1">
-                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Qty</label>
-                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`}/>
-                       </div>
-                       <div className="flex-1">
-                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label>
-                           <input type="number" min="0" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-slate-50 rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 text-center transition-all"/>
-                       </div>
-                   </div>
+
+                   {/* 2. Description */}
                    <div>
                        <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Description</label>
                        <input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-50 rounded-full px-5 py-3 outline-none border border-slate-200 focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 transition-all"/>
                    </div>
                    
-                   <div>
-                       <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Images ({formData.images.length + filesToUpload.length}/5)</label>
-                       {(formData.images.length > 0 || filesToUpload.length > 0) && (
-                           <div className="flex flex-wrap gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                               {formData.images.map((img, i) => (<div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group shadow-sm"><img src={img} className="w-full h-full object-cover"/><button onClick={() => removeExistingFile(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
-                               {filesToUpload.map((file, i) => (<div key={`new_${i}`} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-[#FFAFA8] group"><img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-70"/><button onClick={() => removeFileToUpload(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
-                           </div>
-                       )}
-                       <label className={`w-full h-20 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-[#FFAFA8] text-slate-500 font-medium text-sm cursor-pointer transition ${formData.images.length + filesToUpload.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-[#FFAFA8]'}`}>
-                           <input type="file" multiple onChange={handleMainFileChange} className="hidden" accept="image/*" disabled={formData.images.length + filesToUpload.length >= 5}/>
-                           <span className="flex items-center gap-2">
-                               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                               Add Photo
-                           </span>
-                       </label>
-                   </div>
-
+                   {/* 3. Options with values (Variants) */}
                    {!isReadyMade && (
-                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 mt-4">
+                       <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 mt-0">
                            <div className="flex justify-between items-center mb-5">
                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product Variants</label>
                                <button onClick={addFeatureGroup} className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-4 py-2 rounded-full hover:bg-gradient-to-r hover:from-blue-500 hover:to-cyan-500 hover:text-white hover:border-transparent transition-all shadow-sm flex items-center gap-1.5">
@@ -617,12 +601,7 @@ function ProductListContent() {
                                    <div className="flex flex-col gap-3 pl-3 border-l-2 border-slate-100 ml-2">
                                        {featureGroup.values.map((val, valIndex) => (
                                            <div key={valIndex} className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                               <label className="w-12 h-12 rounded-lg border-2 border-dashed border-[#FFAFA8] flex items-center justify-center overflow-hidden cursor-pointer hover:bg-white transition shrink-0 bg-white relative group shadow-sm" title="Upload Feature Image">
-                                                   {val.file ? <img src={URL.createObjectURL(val.file)} className="w-full h-full object-cover" /> : val.image ? <img src={val.image} className="w-full h-full object-cover" /> : 
-                                                   <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-                                                   <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFeatureImageChange(groupIndex, valIndex, e)} />
-                                                   { (val.file || val.image) && <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold transition">Edit</div> }
-                                               </label>
+                                               {/* Image removed from here */}
                                                <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Feature Value (e.g. Red)" className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder-slate-400 font-medium"/>
                                                <button onClick={() => removeFeatureValue(groupIndex, valIndex)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-slate-400 hover:text-white hover:bg-rose-400 border border-slate-200 transition shrink-0 mr-1 shadow-sm">
                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -641,6 +620,13 @@ function ProductListContent() {
                                    <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1">
                                        {formData.variants.map((variant, idx) => (
                                            <div key={idx} className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                               {/* Image added to Matrix level */}
+                                               <label className="w-12 h-12 rounded-lg border-2 border-dashed border-[#FFAFA8] flex items-center justify-center overflow-hidden cursor-pointer hover:bg-slate-50 transition shrink-0 bg-slate-50 relative group shadow-sm" title="Variant Image (Optional)">
+                                                    {variant.file ? <img src={URL.createObjectURL(variant.file)} className="w-full h-full object-cover" /> : variant.image ? <img src={variant.image} className="w-full h-full object-cover" /> : 
+                                                    <svg className="w-5 h-5 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleVariantImageChange(idx, e)} />
+                                                    { (variant.file || variant.image) && <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold transition">Edit</div> }
+                                               </label>
                                                <div className="flex-1 text-sm font-bold text-slate-700 pl-2 break-words leading-tight">{variant.combo.join(' / ')}</div>
                                                <div className="flex flex-col gap-2 w-28 shrink-0">
                                                    <input type="number" placeholder="Price" value={variant.price} onChange={(e) => updateVariantPrice(idx, e.target.value)} className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Price"/>
@@ -653,6 +639,40 @@ function ProductListContent() {
                            )}
                        </div>
                    )}
+
+                   {/* 4. Price, Quantity, Min Alert */}
+                   <div className="flex gap-4">
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Price</label>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/>
+                       </div>
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Qty</label>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`}/>
+                       </div>
+                       <div className="flex-1">
+                           <label className="text-xs font-bold text-slate-500 ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label>
+                           <input type="number" min="0" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-slate-50 rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 text-center transition-all"/>
+                       </div>
+                   </div>
+                   
+                   {/* 5. Images */}
+                   <div>
+                       <label className="text-xs font-bold text-slate-500 ml-3 uppercase tracking-wider mb-2 block">Images ({formData.images.length + filesToUpload.length}/5)</label>
+                       {(formData.images.length > 0 || filesToUpload.length > 0) && (
+                           <div className="flex flex-wrap gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                               {formData.images.map((img, i) => (<div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 group shadow-sm"><img src={img} className="w-full h-full object-cover"/><button onClick={() => removeExistingFile(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
+                               {filesToUpload.map((file, i) => (<div key={`new_${i}`} className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-[#FFAFA8] group"><img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-70"/><button onClick={() => removeFileToUpload(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button></div>))}
+                           </div>
+                       )}
+                       <label className={`w-full h-20 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-[#FFAFA8] text-slate-500 font-medium text-sm cursor-pointer transition ${formData.images.length + filesToUpload.length >= 5 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-[#FFAFA8]'}`}>
+                           <input type="file" multiple onChange={handleMainFileChange} className="hidden" accept="image/*" disabled={formData.images.length + filesToUpload.length >= 5}/>
+                           <span className="flex items-center gap-2">
+                               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                               Add Photo
+                           </span>
+                       </label>
+                   </div>
                 </div>
 
                 {isReadyMade && (
@@ -690,7 +710,7 @@ function ProductListContent() {
                                                         <svg className="absolute w-4 h-4 text-white pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
                                                     </div>
                                                     <div className="w-14 h-14 bg-slate-50 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-slate-200">
-                                                        {displayImg ? <img src={displayImg} className="w-full h-full object-cover" /> : <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+                                                        {displayImg ? <img src={displayImg} className="w-full h-full object-cover" /> : <svg className="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className={`font-bold text-sm leading-tight truncate transition-colors ${isSelected ? 'text-[#ff8a80]' : 'text-slate-800'}`}>{product.name || product.productname}</p>
@@ -762,7 +782,7 @@ function ProductListContent() {
                           {previewActiveImage ? (
                               <img src={previewActiveImage} alt={previewProduct.name} className="w-full h-full object-cover" />
                           ) : (
-                              <svg className="w-16 h-16 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                              <svg className="w-16 h-16 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
                           )}
                       </div>
                       

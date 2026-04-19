@@ -22,6 +22,8 @@ export default function CartPage() {
     message: ''
   });
 
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
   useEffect(() => { fetchCart(); }, []);
 
   const fetchCart = async () => {
@@ -32,8 +34,10 @@ export default function CartPage() {
     } catch (e) { console.error(e); }
   };
 
-  const handleCheckout = () => {
+  // --- STRICT CHECKOUT VALIDATION FOR VARIANTS ---
+  const handleCheckout = async () => {
     const selectedData = cartItems.filter(item => selectedItems.has(item.id));
+    
     if (selectedData.length === 0) {
       setAlertState({
         show: true,
@@ -42,9 +46,69 @@ export default function CartPage() {
       });
       return;
     }
-    // Pass the selected items (now including the freeQty data) to local storage for the payment page
-    localStorage.setItem('checkoutItems', JSON.stringify(selectedData));
-    router.push('/payment');
+
+    setIsCheckingOut(true);
+
+    try {
+        const inventoryRes = await fetch('/api/inventory-items', { cache: 'no-store' });
+        const liveInventory = await inventoryRes.json();
+
+        for (const cartItem of selectedData) {
+            const dbItem = liveInventory.find((i: any) => i.id === cartItem.id || i.productid === cartItem.id || i.itemid === cartItem.id);
+            
+            if (!dbItem) {
+                setAlertState({
+                    show: true,
+                    title: 'Item Unavailable',
+                    message: `Sorry, "${cartItem.name}" is no longer available in our store.`
+                });
+                setIsCheckingOut(false);
+                return;
+            }
+
+            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.itemquantity || 0, 10);
+
+            // Fetch Live Stock Specifically for the Variant
+            if (dbItem.variants) {
+                 try {
+                     const variantsArr = typeof dbItem.variants === 'string' ? JSON.parse(dbItem.variants) : dbItem.variants;
+                     for (const v of variantsArr) {
+                         if (v.combo) {
+                             const comboStr = v.combo.join(' / ');
+                             if (cartItem.selectedVariantCombo === comboStr || (cartItem.name && cartItem.name.includes(comboStr))) {
+                                 liveStock = parseInt(v.quantity, 10) || 0;
+                                 break;
+                             }
+                         }
+                     }
+                 } catch (e) { console.error("Variant Check Failed", e); }
+            }
+
+            const totalRequiredQty = parseInt(cartItem.quantity, 10) || 0;
+
+            if (totalRequiredQty > liveStock) {
+                setAlertState({
+                    show: true,
+                    title: 'Insufficient Stock',
+                    message: `Sorry, we only have ${liveStock} of "${cartItem.name}" left in stock. Please reduce your quantity.`
+                });
+                setIsCheckingOut(false);
+                return;
+            }
+        }
+
+        localStorage.setItem('checkoutItems', JSON.stringify(selectedData));
+        router.push('/payment');
+
+    } catch (error) {
+        console.error("Checkout Validation Error:", error);
+        setAlertState({
+            show: true,
+            title: 'System Error',
+            message: 'Unable to verify stock at this moment. Please try again.'
+        });
+        setIsCheckingOut(false);
+    }
   };
 
   const openDeleteDialog = (id: string, type: string, name: string) => {
@@ -72,23 +136,46 @@ export default function CartPage() {
   };
 
   const cancelDelete = () => setConfirmDialog({ show: false, itemId: '', itemType: '', itemName: '' });
-  
   const closeAlert = () => setAlertState({ show: false, title: '', message: '' });
 
+  // --- LIVE VALIDATION ON QUANTITY UPDATE (+) BUTTON ---
   const updateQuantity = async (item: any, newQty: number) => {
     if (newQty < 1) return;
     
-    if (newQty > item.maxStock) {
-        setAlertState({
-            show: true,
-            title: 'Stock Limit Reached',
-            message: `Sorry, we only have ${item.maxStock} of "${item.name}" left in stock!`
-        });
-        return;
-    }
+    try {
+        const resInv = await fetch('/api/inventory-items', { cache: 'no-store' });
+        const liveInventory = await resInv.json();
+        const dbItem = liveInventory.find((i: any) => i.id === item.id || i.productid === item.id || i.itemid === item.id);
+        
+        if (dbItem) {
+            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.itemquantity || 0, 10);
+            
+            if (dbItem.variants) {
+                try {
+                    const variantsArr = typeof dbItem.variants === 'string' ? JSON.parse(dbItem.variants) : dbItem.variants;
+                    for (const v of variantsArr) {
+                        if (v.combo) {
+                            const comboStr = v.combo.join(' / ');
+                            if (item.selectedVariantCombo === comboStr || (item.name && item.name.includes(comboStr))) {
+                                liveStock = parseInt(v.quantity, 10) || 0;
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
 
-    // Optimistically update the UI so it feels fast, but we MUST re-fetch the cart 
-    // afterward so the backend can recalculate if the new quantity triggered a BOGO!
+            if (newQty > liveStock) {
+                setAlertState({
+                    show: true,
+                    title: 'Stock Limit Reached',
+                    message: `Sorry, we only have ${liveStock} of "${item.name}" left in stock!`
+                });
+                return; 
+            }
+        }
+    } catch(e) { console.error("Stock check failed", e); }
+
     setCartItems(cartItems.map(i => (i.id === item.id && i.type === item.type) ? { ...i, quantity: newQty } : i));
     
     const res = await fetch('/api/cart', {
@@ -98,7 +185,7 @@ export default function CartPage() {
     });
 
     if (res.ok) {
-        fetchCart(); // Re-fetch to get updated BOGO math!
+        fetchCart(); 
     }
   };
 
@@ -108,7 +195,6 @@ export default function CartPage() {
     setSelectedItems(newSet);
   };
 
-  // Total price only counts the actual paid quantity, completely ignoring free items
   const total = cartItems.filter(item => selectedItems.has(item.id)).reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
 
   return (
@@ -184,7 +270,6 @@ export default function CartPage() {
                     <h3 className="font-bold text-slate-900 text-xl leading-tight truncate group-hover:text-[#ff8a80] transition-colors">{item.name}</h3>
                     <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 mb-2">{item.type}</p>
                     
-                    {/* --- NEW: THE BOGO FREE ITEM TAG --- */}
                     {item.freeQty > 0 && (
                         <div className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-600 px-3 py-1 rounded-lg text-xs font-bold shadow-sm mb-3">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>
@@ -228,12 +313,15 @@ export default function CartPage() {
 
                 <button 
                     onClick={handleCheckout} 
-                    disabled={total === 0} 
+                    disabled={total === 0 || isCheckingOut} 
                     className={`w-full py-4 rounded-full font-bold shadow-md tracking-wide transition-all border border-transparent flex items-center justify-center gap-2
-                        ${total > 0 ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                        ${total > 0 && !isCheckingOut ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                 >
-                    Proceed to Payment
-                    {total > 0 && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>}
+                    {isCheckingOut ? (
+                        <><div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div> Checking Stock...</>
+                    ) : (
+                        <>Proceed to Payment {total > 0 && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>}</>
+                    )}
                 </button>
               </div>
             </div>

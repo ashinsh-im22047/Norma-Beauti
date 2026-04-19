@@ -100,7 +100,6 @@ function CreateProfileContent() {
             gender 
         }),
       });
-
       if (!response.ok) throw new Error('Failed to create profile');
 
       localStorage.setItem('userEmail', email || '');
@@ -114,7 +113,6 @@ function CreateProfileContent() {
         type: 'success',
         redirectPath: '/shop'
       });
-
     } catch (error) {
         setAlertState({
             show: true,

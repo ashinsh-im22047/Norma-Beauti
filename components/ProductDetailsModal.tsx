@@ -47,23 +47,25 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     const [reviews, setReviews] = useState<any[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
 
-    const [includedProducts, setIncludedProducts] = useState<any[]>(product.includedProducts || []);
+    const [includedProducts, setIncludedProducts] = useState<any[]>(product?.includedProducts || []);
     const [loadingIncluded, setLoadingIncluded] = useState(false);
 
     const [wishlistLoading, setWishlistLoading] = useState(false);
     const [alertState, setAlertState] = useState({ show: false, title: '', message: '', type: 'success' });
 
-    if (!product) return null; 
+    const [cartQty, setCartQty] = useState(0);
 
-    const parsedVariants = product.variants ? (typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants) : [];
+    const parsedVariants = product?.variants ? (typeof product.variants === 'string' ? JSON.parse(product.variants) : product.variants) : [];
     const validVariants = Array.isArray(parsedVariants) ? parsedVariants : [];
     
-    const parsedFeatures = product.features ? (typeof product.features === 'string' ? JSON.parse(product.features) : product.features) : [];
+    const parsedFeatures = product?.features ? (typeof product.features === 'string' ? JSON.parse(product.features) : product.features) : [];
     const validFeatures = Array.isArray(parsedFeatures) ? parsedFeatures : [];
 
     const [selectedVariant, setSelectedVariant] = useState<any>(validVariants.length > 0 ? validVariants[0] : null);
 
     useEffect(() => {
+        if (!product) return;
+        
         fetch('/api/settings')
             .then(res => res.json())
             .then(data => {
@@ -115,9 +117,47 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
             }
         };
         
+        const fetchCartQuantity = async () => {
+            try {
+                const res = await fetch('/api/cart');
+                if (res.ok) {
+                    const data = await res.json();
+                    let qtyInCart = 0;
+                    const targetId = product.id || product.productid || product.itemid;
+                    const targetCombo = selectedVariant ? selectedVariant.combo.join(' / ') : null;
+                    
+                    const itemsArray = Array.isArray(data) ? data : (data.items || []);
+                    
+                    itemsArray.forEach((cartItem: any) => {
+                        const cartItemId = cartItem.id || cartItem.productid || cartItem.itemid;
+                        if (cartItemId === targetId) {
+                            let match = false;
+                            if (!targetCombo) {
+                                match = true;
+                            } else if (cartItem.selectedVariantCombo === targetCombo) {
+                                match = true;
+                            } else if (cartItem.name && cartItem.name.includes(targetCombo)) {
+                                match = true;
+                            }
+
+                            if (match) {
+                                qtyInCart += parseInt(cartItem.quantity || cartItem.ptquantity || 1, 10);
+                            }
+                        }
+                    });
+                    setCartQty(qtyInCart);
+                }
+            } catch (e) {
+                console.error("Failed to check cart quantity", e);
+            }
+        };
+
         fetchReviews();
         fetchIncludedProducts();
-    }, [product]);
+        fetchCartQuantity();
+    }, [product, selectedVariant]);
+
+    if (!product) return null; 
 
     const getDeliveryDates = () => {
         const today = new Date();
@@ -127,11 +167,29 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
         return `${start.toLocaleDateString(undefined, options)} - ${end.toLocaleDateString(undefined, options)}`;
     };
 
-    const rawStock = product.quantity ?? product.availablequantity ?? product.itemquantity;
-    const maxAvailable = rawStock !== undefined && rawStock !== null && !isNaN(Number(rawStock)) ? Number(rawStock) : 100; 
+    let maxAvailable = 100;
+    if (selectedVariant && selectedVariant.quantity !== undefined) {
+        maxAvailable = parseInt(selectedVariant.quantity, 10) || 0;
+    } else {
+        const rawStock = product.quantity ?? product.availablequantity ?? product.itemquantity;
+        maxAvailable = rawStock !== undefined && rawStock !== null && !isNaN(Number(rawStock)) ? Number(rawStock) : 100; 
+    }
     
+    // Calculate how many more the user can safely add
+    const realMaxAvailable = Math.max(0, maxAvailable - cartQty);
     const isInStock = maxAvailable > 0;
     const isLowStock = maxAvailable > 0 && maxAvailable <= 5;
+    const canAddToCart = isInStock && realMaxAvailable > 0;
+
+    useEffect(() => {
+        if (quantity > realMaxAvailable && realMaxAvailable > 0) {
+            setQuantity(realMaxAvailable);
+        } else if (quantity < 1 && realMaxAvailable > 0) {
+            setQuantity(1);
+        } else if (realMaxAvailable === 0) {
+            setQuantity(0);
+        }
+    }, [selectedVariant, realMaxAvailable]);
 
     const dynamicProductForPrice = { 
         ...product, 
@@ -145,7 +203,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
 
     const handleUpdateQuantity = (change: number) => {
         const newQty = quantity + change;
-        if (newQty >= 1 && newQty <= maxAvailable) {
+        if (newQty >= 1 && newQty <= realMaxAvailable) {
             setQuantity(newQty);
         }
     };
@@ -156,6 +214,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
              itemToAdd.price = selectedVariant.price;
              itemToAdd.itemprice = selectedVariant.price;
              itemToAdd.name = `${product.name || product.productname || product.itemname} - ${selectedVariant.combo.join(' / ')}`;
+             itemToAdd.selectedVariantCombo = selectedVariant.combo.join(' / '); 
         }
         onAddToCart(itemToAdd, quantity);
         onClose(); 
@@ -210,7 +269,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
 
     return (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            {/* Added scrollbar hiding classes here */}
             <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-y-auto relative animate-scale-up border border-slate-200 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] flex flex-col md:flex-row gap-10" onClick={(e) => e.stopPropagation()}>
                 
                 <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-[#EC5564] font-bold text-2xl leading-none transition-colors z-10">✕</button>
@@ -253,8 +311,8 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                 <span className={`px-4 py-1.5 rounded-full text-xs font-bold border shadow-sm ${isInStock ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                                     {isLowStock ? 'Low Stock' : isInStock ? 'Available' : 'Sold Out'}
                                 </span>
-                                {isInStock && rawStock !== undefined && (
-                                    <span className="text-[10px] font-bold text-slate-400 mt-1 mr-1">{maxAvailable} available</span>
+                                {isInStock && maxAvailable !== undefined && (
+                                    <span className="text-[10px] font-bold text-slate-400 mt-1 mr-1">{maxAvailable} Total</span>
                                 )}
                             </div>
                         </div>
@@ -271,24 +329,27 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                             for (const valName of v.combo) {
                                                 for (const feature of validFeatures) {
                                                     const match = feature.values?.find((val: any) => val.name === valName && val.image);
-                                                    if (match) {
-                                                        thumbImg = match.image;
-                                                        break;
-                                                    }
+                                                    if (match) { thumbImg = match.image; break; }
                                                 }
                                                 if (thumbImg) break;
                                             }
                                         }
 
                                         const isSelected = selectedVariant?.combo?.join() === v.combo?.join();
+                                        const isVariantOutOfStock = parseInt(v.quantity, 10) <= 0;
 
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={(e) => { e.stopPropagation(); setSelectedVariant(v); }}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    setSelectedVariant(v); 
+                                                }}
                                                 className={`px-4 py-2 rounded-full text-sm font-bold border transition-all duration-200 flex items-center gap-2 shadow-sm ${
                                                     isSelected 
                                                     ? 'bg-[#EC5564] text-white border-[#EC5564] shadow-md scale-105' 
+                                                    : isVariantOutOfStock 
+                                                    ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60 hover:opacity-80'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-[#FFAFA8]'
                                                 }`}
                                             >
@@ -296,6 +357,7 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                                     <img src={thumbImg} alt={comboText} className="w-5 h-5 rounded-full object-cover border border-white/50 bg-white" />
                                                 )}
                                                 {comboText}
+                                                {isVariantOutOfStock && <span className="text-[9px] uppercase tracking-widest ml-1">(Out)</span>}
                                             </button>
                                         );
                                     })}
@@ -331,7 +393,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                             {loadingIncluded ? (
                                 <p className="text-xs text-[#F76D82] italic px-2 animate-pulse">Unpacking box contents...</p>
                             ) : (
-                                /* Added scrollbar hiding classes here too */
                                 <div className="grid gap-3 max-h-60 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pr-2">
                                     {includedProducts.map((incProd: any, idx: number) => (
                                         <div key={idx} className="flex gap-3 bg-slate-50/50 p-2 rounded-xl border border-slate-100 items-center">
@@ -355,7 +416,6 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                                 </div>
                             )}
                         </div>
-                        {/* Added scrollbar hiding classes here too */}
                         <div className="space-y-3 max-h-48 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pr-2">
                             {loadingReviews ? (
                                 <p className="text-xs text-slate-400 italic px-2">Loading reviews...</p>
@@ -378,16 +438,16 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
                     <div className="mt-auto pt-6 border-t border-slate-100 flex flex-col gap-3">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center bg-slate-50 rounded-full border border-slate-200 shadow-sm p-1.5 shrink-0">
-                                <button onClick={() => handleUpdateQuantity(-1)} disabled={!isInStock || quantity <= 1} className="w-10 h-10 flex items-center justify-center font-bold text-slate-500 hover:text-[#EC5564] hover:bg-white rounded-full transition-colors disabled:opacity-50 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">-</button>
+                                <button onClick={() => handleUpdateQuantity(-1)} disabled={!canAddToCart || quantity <= 1} className="w-10 h-10 flex items-center justify-center font-bold text-slate-500 hover:text-[#EC5564] hover:bg-white rounded-full transition-colors disabled:opacity-50 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">-</button>
                                 <span className="font-bold w-10 text-center text-lg text-slate-900">{quantity}</span>
-                                <button onClick={() => handleUpdateQuantity(1)} disabled={!isInStock || quantity >= maxAvailable} className="w-10 h-10 flex items-center justify-center font-bold text-slate-500 hover:text-[#EC5564] hover:bg-white rounded-full transition-colors disabled:opacity-50 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">+</button>
+                                <button onClick={() => handleUpdateQuantity(1)} disabled={!canAddToCart || quantity >= realMaxAvailable} className="w-10 h-10 flex items-center justify-center font-bold text-slate-500 hover:text-[#EC5564] hover:bg-white rounded-full transition-colors disabled:opacity-50 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed">+</button>
                             </div>
                             <button 
                                 onClick={confirmAddToCart}
-                                disabled={!isInStock}
+                                disabled={!canAddToCart}
                                 className="flex-1 py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-70 disabled:hover:scale-100 uppercase tracking-widest text-xs"
                             >
-                                {isInStock ? `Add to Bag` : "Sold Out"}
+                                {isInStock && realMaxAvailable > 0 ? `Add to Cart` : realMaxAvailable === 0 && isInStock ? `Max Qty in Cart` : "Sold Out"}
                             </button>
                         </div>
                         
