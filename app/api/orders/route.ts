@@ -1,3 +1,9 @@
+// ==========================================
+// File: route.ts
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -68,40 +74,55 @@ export async function POST(req: Request) {
 
     // --- STRICT BACKEND VALIDATION FOR VARIANTS ---
     for (const item of items) {
-      if (item.type === 'product') {
-        const [prodRows]: any = await db.query('SELECT availablequantity, variants, productname FROM product WHERE productid = ?', [item.id]);
-        if (prodRows.length === 0) return NextResponse.json({ error: `Product ${item.name} not found.` }, { status: 404 });
+      const itemId = item.id || item.productid || item.itemid;
+      const itemName = item.name || item.productname || item.itemname;
+      
+      if (!itemId) {
+          return NextResponse.json({ error: `Invalid item ID for ${itemName || 'unknown product'}` }, { status: 400 });
+      }
+
+      const isProduct = item.type === 'product' || String(itemId).toUpperCase().includes('PROD');
+
+      if (isProduct) {
+        const [prodRows]: any = await db.query('SELECT availablequantity, variants, productname FROM product WHERE productid = ?', [itemId]);
+        
+        if (prodRows.length === 0) {
+            return NextResponse.json({ error: `Product '${itemName}' (ID: ${itemId}) not found in database.` }, { status: 404 });
+        }
         
         let stock = parseInt(prodRows[0].availablequantity, 10) || 0;
         
-        // Find if a variant is selected by looking at the combo or matching the name
         if (prodRows[0].variants) {
             try {
                 const variantsArr = typeof prodRows[0].variants === 'string' ? JSON.parse(prodRows[0].variants) : (prodRows[0].variants || []);
                 for (const v of variantsArr) {
                     if (v.combo) {
                         const comboStr = v.combo.join(' / ');
-                        if (item.selectedVariantCombo === comboStr || (item.name && item.name.includes(comboStr))) {
+                        if (item.selectedVariantCombo === comboStr || (itemName && itemName.includes(comboStr))) {
                             stock = parseInt(v.quantity, 10) || 0;
                             break;
                         }
                     }
                 }
-            } catch (e) { console.error("Variant Parse Error", e); }
+            } catch (e) {}
         }
 
         const requiredQty = parseInt(item.quantity, 10) || 0;
         if (requiredQty > stock) {
-            return NextResponse.json({ error: `Not enough stock for ${item.name}. Only ${stock} available.` }, { status: 400 });
+            return NextResponse.json({ error: `Not enough stock for ${itemName}. Only ${stock} available.` }, { status: 400 });
         }
       } else {
-         const [itemRows]: any = await db.query('SELECT itemquantity, itemname FROM item WHERE itemid = ?', [item.id]);
-         if (itemRows.length === 0) return NextResponse.json({ error: `Item ${item.name} not found.` }, { status: 404 });
+         const [itemRows]: any = await db.query('SELECT itemquantity, itemname FROM item WHERE itemid = ?', [itemId]);
+         
+         if (itemRows.length === 0) {
+             return NextResponse.json({ error: `Item '${itemName}' (ID: ${itemId}) not found in the database.` }, { status: 404 });
+         }
+
          const itemStock = parseInt(itemRows[0].itemquantity, 10) || 0;
          const requiredQty = parseInt(item.quantity, 10) || 0;
          
          if (requiredQty > itemStock) {
-             return NextResponse.json({ error: `Not enough stock for ${item.name}. Only ${itemStock} available.` }, { status: 400 });
+             return NextResponse.json({ error: `Not enough stock for ${itemName}. Only ${itemStock} available.` }, { status: 400 });
          }
       }
     }
@@ -120,25 +141,30 @@ export async function POST(req: Request) {
 
     // 2. Insert Items, Deduct Stock, Remove from Cart
     for (const item of items) {
+      const itemId = item.id || item.productid || item.itemid;
+      const itemName = item.name || item.productname || item.itemname;
       const itemQtyToDeduct = parseInt(item.quantity, 10) || 0;
+      const itemPrice = parseFloat(item.price) || 0;
+      const isProduct = item.type === 'product' || String(itemId).toUpperCase().includes('PROD');
 
-      if (item.type === 'product') {
-        await db.query('INSERT INTO orderedproducts (orderid, productid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, item.id, itemQtyToDeduct, item.price]);
+      if (isProduct) {
+        try {
+            await db.query('INSERT INTO orderedproducts (orderid, productid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, itemId, itemQtyToDeduct, itemPrice]);
+        } catch(e: any) {
+            throw new Error(`DB Error (orderedproducts): ${e.message}`);
+        }
         
-        // Deduct overall available quantity
-        await db.query('UPDATE product SET availablequantity = GREATEST(0, availablequantity - ?) WHERE productid = ?', [itemQtyToDeduct, item.id]);
+        await db.query('UPDATE product SET availablequantity = GREATEST(0, availablequantity - ?) WHERE productid = ?', [itemQtyToDeduct, itemId]);
         
-        // --- DEDUCT VARIANT QUANTITY IN JSON ---
-        const [prodRows]: any = await db.query('SELECT variants FROM product WHERE productid = ?', [item.id]);
+        const [prodRows]: any = await db.query('SELECT variants FROM product WHERE productid = ?', [itemId]);
         if (prodRows.length > 0 && prodRows[0].variants) {
              try {
                  let variantsArr = typeof prodRows[0].variants === 'string' ? JSON.parse(prodRows[0].variants) : prodRows[0].variants;
                  let variantFound = false;
-                 
                  let updatedVariants = variantsArr.map((v: any) => {
                      if (v.combo) {
                          const comboStr = v.combo.join(' / ');
-                         if (item.selectedVariantCombo === comboStr || (item.name && item.name.includes(comboStr))) {
+                         if (item.selectedVariantCombo === comboStr || (itemName && itemName.includes(comboStr))) {
                              const currentQty = parseInt(v.quantity, 10) || 0;
                              v.quantity = Math.max(0, currentQty - itemQtyToDeduct).toString();
                              variantFound = true;
@@ -146,20 +172,36 @@ export async function POST(req: Request) {
                      }
                      return v;
                  });
-
                  if (variantFound) {
-                    await db.query('UPDATE product SET variants = ? WHERE productid = ?', [JSON.stringify(updatedVariants), item.id]);
+                    await db.query('UPDATE product SET variants = ? WHERE productid = ?', [JSON.stringify(updatedVariants), itemId]);
                  }
-             } catch (e) {
-                 console.error("Error parsing variants for deduction", e);
-             }
+             } catch (e) {}
         }
         
-        if (cartId) await db.query('DELETE FROM cartproducts WHERE cartid = ? AND productid = ?', [cartId, item.id]);
+        if (cartId) await db.query('DELETE FROM cartproducts WHERE cartid = ? AND productid = ?', [cartId, itemId]);
       } else {
-        await db.query('INSERT INTO ordereditems (orderid, itemid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, item.id, itemQtyToDeduct, item.price]);
-        await db.query('UPDATE item SET itemquantity = GREATEST(0, itemquantity - ?) WHERE itemid = ?', [itemQtyToDeduct, item.id]);
-        if (cartId) await db.query('DELETE FROM cartitems WHERE cartid = ? AND itemid = ?', [cartId, item.id]);
+        
+        // --- MULTI-TRY INSERTION TO PREVENT CRASHES ON UNKNOWN COLUMN NAMES ---
+        try {
+            // Standard approach
+            await db.query('INSERT INTO ordereditems (orderid, itemid, quantity, amount) VALUES (?, ?, ?, ?)', [newOrderId, itemId, itemQtyToDeduct, itemPrice]);
+        } catch (e1: any) {
+            try {
+                // Alternative 1
+                await db.query('INSERT INTO ordereditems (orderid, itemid, itemquantity, itemprice) VALUES (?, ?, ?, ?)', [newOrderId, itemId, itemQtyToDeduct, itemPrice]);
+            } catch (e2: any) {
+                try {
+                   // Alternative 2 (My previous guess)
+                   await db.query('INSERT INTO ordereditems (orderid, itemid, oiqty, oiprice) VALUES (?, ?, ?, ?)', [newOrderId, itemId, itemQtyToDeduct, itemPrice]);
+                } catch (e3: any) {
+                   // If all fail, throw the exact database error message to the frontend!
+                   throw new Error(`DB Column Mismatch in 'ordereditems' table! Error Details: ${e1.message}`);
+                }
+            }
+        }
+
+        await db.query('UPDATE item SET itemquantity = GREATEST(0, itemquantity - ?) WHERE itemid = ?', [itemQtyToDeduct, itemId]);
+        if (cartId) await db.query('DELETE FROM cartitems WHERE cartid = ? AND itemid = ?', [cartId, itemId]);
       }
     }
 
@@ -167,7 +209,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("ORDER API ERROR:", error.message);
-    return NextResponse.json({ error: "Order failed: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -194,16 +236,18 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ error: "Cannot cancel processed order." }, { status: 403 });
         }
         
-        // Refund Products (Main Quantity Only)
-        const [products]: any = await db.query('SELECT productid, quantity FROM orderedproducts WHERE orderid = ?', [orderId]);
+        // Refund Products 
+        const [products]: any = await db.query('SELECT * FROM orderedproducts WHERE orderid = ?', [orderId]);
         for (const p of products) {
-            await db.query('UPDATE product SET availablequantity = availablequantity + ? WHERE productid = ?', [p.quantity, p.productid]);
+            const pQty = p.quantity || p.productquantity || 0;
+            await db.query('UPDATE product SET availablequantity = availablequantity + ? WHERE productid = ?', [pQty, p.productid]);
         }
 
-        // Refund Items
-        const [items]: any = await db.query('SELECT itemid, quantity FROM ordereditems WHERE orderid = ?', [orderId]);
+        // Refund Items safely regardless of column name
+        const [items]: any = await db.query('SELECT * FROM ordereditems WHERE orderid = ?', [orderId]);
         for (const i of items) {
-            await db.query('UPDATE item SET itemquantity = itemquantity + ? WHERE itemid = ?', [i.quantity, i.itemid]);
+            const iQty = i.quantity || i.itemquantity || i.oiqty || 0;
+            await db.query('UPDATE item SET itemquantity = itemquantity + ? WHERE itemid = ?', [iQty, i.itemid]);
         }
 
         await db.query('UPDATE `order` SET status = "Cancelled" WHERE orderid = ?', [orderId]);

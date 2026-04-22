@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -10,6 +16,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false); 
   const [deliveryDays, setDeliveryDays] = useState({ min: 3, max: 5 });
+  const [deliveryFee, setDeliveryFee] = useState(350); // State for Delivery Fee
   
   const [details, setDetails] = useState({ name: '', address: '', phone: '' });
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Slip'>('COD');
@@ -29,6 +36,9 @@ export default function PaymentPage() {
     if (storedItems) setItems(JSON.parse(storedItems));
     else router.push('/cart');
 
+    const storedFee = localStorage.getItem('deliveryFee');
+    if (storedFee) setDeliveryFee(parseFloat(storedFee));
+
     fetch('/api/profile')
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -39,6 +49,7 @@ export default function PaymentPage() {
         .then(res => res.json())
         .then(data => {
             if (data.min_delivery_days !== undefined) setDeliveryDays({ min: data.min_delivery_days, max: data.max_delivery_days });
+            if (data.delivery_fee !== undefined) setDeliveryFee(data.delivery_fee);
         }).catch(err => console.error(err));
 
   }, [router]);
@@ -81,17 +92,31 @@ export default function PaymentPage() {
     if (paymentMethod === 'Slip' && !slipFile) return setAlertState({ show: true, type: 'error', title: 'Payment Slip Required', message: 'Please upload the bank transfer slip.', redirect: '' });
 
     setLoading(true);
-    const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+    
+    // Add delivery fee to the final total sent to the database
+    const itemsTotal = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+    const finalTotalWithDelivery = itemsTotal + deliveryFee;
+
+    const formattedItems = items.map(item => {
+        const itemId = item.id || item.productid || item.itemid;
+        const itemName = item.name || item.productname || item.itemname;
+        let itemType = item.type;
+        if (!itemType) {
+             itemType = String(itemId).toUpperCase().includes('PROD') ? 'product' : 'item';
+        }
+        return { ...item, id: itemId, name: itemName, type: itemType };
+    });
 
     try {
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items, total, method: paymentMethod, slip: slipFile, details })
+            body: JSON.stringify({ items: formattedItems, total: finalTotalWithDelivery, method: paymentMethod, slip: slipFile, details })
         });
 
         if (res.ok) {
             localStorage.removeItem('checkoutItems');
+            localStorage.removeItem('deliveryFee');
             setAlertState({ show: true, type: 'success', title: 'Order Placed!', message: 'Your order has been placed successfully.', redirect: '/profile/my-orders' });
         } else {
             const err = await res.json();
@@ -104,7 +129,8 @@ export default function PaymentPage() {
     }
   };
 
-  const total = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  const itemsTotal = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  const finalTotal = itemsTotal > 0 ? itemsTotal + deliveryFee : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
@@ -177,6 +203,7 @@ export default function PaymentPage() {
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estimated Delivery</p>
                             <p className="text-base font-bold text-slate-800 tracking-tight">{getDeliveryDates()}</p>
+                            <p className="text-xs font-bold text-[#ff8a80] mt-1">Delivery Fee: LKR {deliveryFee.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -215,9 +242,20 @@ export default function PaymentPage() {
                     )}
 
                     <div className="mt-auto pt-8 border-t border-slate-100">
+                        <div className="w-full space-y-3 mb-6 px-2">
+                            <div className="flex justify-between items-center text-sm font-bold text-slate-500">
+                                <span>Items Total</span>
+                                <span>LKR {itemsTotal.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm font-bold text-slate-500">
+                                <span>Delivery Fee</span>
+                                <span>LKR {deliveryFee.toLocaleString()}</span>
+                            </div>
+                        </div>
+
                         <div className="flex justify-between items-center text-xl font-bold text-slate-900 mb-8 bg-slate-50 p-6 rounded-[1.5rem] shadow-inner">
-                            <span className="uppercase tracking-widest text-[10px] text-slate-400 font-bold">Total Payable</span>
-                            <span className="text-2xl tracking-tight">LKR {total.toLocaleString()}</span>
+                            <span className="uppercase tracking-widest text-[10px] text-[#ff8a80] font-bold">Total Payable</span>
+                            <span className="text-2xl tracking-tight">LKR {finalTotal.toLocaleString()}</span>
                         </div>
                         <button disabled={loading} type="submit" className={`w-full py-4 rounded-full font-bold text-white shadow-md tracking-wide transition-all border border-transparent flex items-center justify-center gap-2 ${loading ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] hover:shadow-lg hover:scale-[1.02]'}`}>
                             {loading ? (

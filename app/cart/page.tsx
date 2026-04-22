@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -23,8 +29,26 @@ export default function CartPage() {
   });
 
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState(350); // State for Delivery Fee
 
-  useEffect(() => { fetchCart(); }, []);
+  useEffect(() => { 
+      fetchCart(); 
+      fetchDeliverySettings();
+  }, []);
+
+  const fetchDeliverySettings = async () => {
+      try {
+          const res = await fetch('/api/settings');
+          if (res.ok) {
+              const data = await res.json();
+              if (data.delivery_fee !== undefined) {
+                  setDeliveryFee(data.delivery_fee);
+              }
+          }
+      } catch (error) {
+          console.error("Failed to load delivery settings", error);
+      }
+  };
 
   const fetchCart = async () => {
     try {
@@ -54,9 +78,22 @@ export default function CartPage() {
         const liveInventory = await inventoryRes.json();
 
         for (const cartItem of selectedData) {
-            const dbItem = liveInventory.find((i: any) => i.id === cartItem.id || i.productid === cartItem.id || i.itemid === cartItem.id);
+            // FIX: Use String() to prevent Int vs String strict equality failures and check camelCase keys
+            const dbItem = liveInventory.find((i: any) => 
+                String(i.id) === String(cartItem.id) || 
+                String(i.productid) === String(cartItem.id) || 
+                String(i.productId) === String(cartItem.id) || 
+                String(i.itemid) === String(cartItem.id) ||
+                String(i.itemId) === String(cartItem.id) ||
+                String(i._id) === String(cartItem.id)
+            );
             
             if (!dbItem) {
+                // If it's a bundled offer/custom box that doesn't have a single inventory record, bypass block
+                if (cartItem.type === 'offer' || cartItem.type === 'bundle' || cartItem.name?.toLowerCase().includes('gift box')) {
+                    continue;
+                }
+
                 setAlertState({
                     show: true,
                     title: 'Item Unavailable',
@@ -66,7 +103,8 @@ export default function CartPage() {
                 return;
             }
 
-            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.itemquantity || 0, 10);
+            // FIX: Added camelCase quantity checks to ensure it finds the right stock value
+            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.availableQuantity || dbItem.itemquantity || dbItem.itemQuantity || 0, 10);
 
             // Fetch Live Stock Specifically for the Variant
             if (dbItem.variants) {
@@ -98,6 +136,7 @@ export default function CartPage() {
         }
 
         localStorage.setItem('checkoutItems', JSON.stringify(selectedData));
+        localStorage.setItem('deliveryFee', deliveryFee.toString()); // Pass fee to next page
         router.push('/payment');
 
     } catch (error) {
@@ -145,10 +184,19 @@ export default function CartPage() {
     try {
         const resInv = await fetch('/api/inventory-items', { cache: 'no-store' });
         const liveInventory = await resInv.json();
-        const dbItem = liveInventory.find((i: any) => i.id === item.id || i.productid === item.id || i.itemid === item.id);
+        
+        // FIX: Match the robust string & camelCase check here as well
+        const dbItem = liveInventory.find((i: any) => 
+            String(i.id) === String(item.id) || 
+            String(i.productid) === String(item.id) || 
+            String(i.productId) === String(item.id) || 
+            String(i.itemid) === String(item.id) ||
+            String(i.itemId) === String(item.id) ||
+            String(i._id) === String(item.id)
+        );
         
         if (dbItem) {
-            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.itemquantity || 0, 10);
+            let liveStock = parseInt(dbItem.quantity || dbItem.availablequantity || dbItem.availableQuantity || dbItem.itemquantity || dbItem.itemQuantity || 0, 10);
             
             if (dbItem.variants) {
                 try {
@@ -195,7 +243,8 @@ export default function CartPage() {
     setSelectedItems(newSet);
   };
 
-  const total = cartItems.filter(item => selectedItems.has(item.id)).reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  const itemsTotal = cartItems.filter(item => selectedItems.has(item.id)).reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  const finalTotal = itemsTotal > 0 ? itemsTotal + deliveryFee : 0; // Add fee only if items selected
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-24">
@@ -306,21 +355,34 @@ export default function CartPage() {
             
             <div className="w-full lg:w-80 shrink-0">
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 sticky top-28 flex flex-col items-center">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Order Total</p>
-                <h3 className="text-4xl font-bold text-slate-900 mb-8 tracking-tight">LKR {total.toLocaleString()}</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Order Summary</p>
                 
-                <div className="w-full h-px bg-slate-100 mb-8"></div>
+                <div className="w-full space-y-4 mb-6">
+                    <div className="flex justify-between items-center text-sm font-bold text-slate-600">
+                        <span>Items Total</span>
+                        <span>LKR {itemsTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-bold text-slate-600">
+                        <span>Delivery Fee</span>
+                        <span>{itemsTotal > 0 ? `LKR ${deliveryFee.toLocaleString()}` : '-'}</span>
+                    </div>
+                </div>
 
+                <div className="w-full h-px bg-slate-100 mb-6"></div>
+                
+                <p className="text-xs font-bold text-[#ff8a80] uppercase tracking-widest mb-2">Final Total</p>
+                <h3 className="text-4xl font-bold text-slate-900 mb-8 tracking-tight">LKR {finalTotal.toLocaleString()}</h3>
+                
                 <button 
                     onClick={handleCheckout} 
-                    disabled={total === 0 || isCheckingOut} 
+                    disabled={itemsTotal === 0 || isCheckingOut} 
                     className={`w-full py-4 rounded-full font-bold shadow-md tracking-wide transition-all border border-transparent flex items-center justify-center gap-2
-                        ${total > 0 && !isCheckingOut ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                        ${itemsTotal > 0 && !isCheckingOut ? 'bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white hover:shadow-lg hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                 >
                     {isCheckingOut ? (
                         <><div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div> Checking Stock...</>
                     ) : (
-                        <>Proceed to Payment {total > 0 && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>}</>
+                        <>Proceed to Payment {itemsTotal > 0 && <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>}</>
                     )}
                 </button>
               </div>

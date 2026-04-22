@@ -117,31 +117,27 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
             }
         };
         
+        // --- FIX: Strictly match cart items by the variant combo string ---
         const fetchCartQuantity = async () => {
             try {
-                const res = await fetch('/api/cart');
+                const res = await fetch('/api/cart', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     let qtyInCart = 0;
-                    const targetId = product.id || product.productid || product.itemid;
-                    const targetCombo = selectedVariant ? selectedVariant.combo.join(' / ') : null;
+                    
+                    const targetId = String(product.id || product.productid || product.itemid);
+                    const targetCombo = selectedVariant && selectedVariant.combo ? selectedVariant.combo.join(' / ') : "";
                     
                     const itemsArray = Array.isArray(data) ? data : (data.items || []);
                     
                     itemsArray.forEach((cartItem: any) => {
-                        const cartItemId = cartItem.id || cartItem.productid || cartItem.itemid;
+                        const cartItemId = String(cartItem.id || cartItem.productid || cartItem.itemid);
+                        
                         if (cartItemId === targetId) {
-                            let match = false;
-                            if (!targetCombo) {
-                                match = true;
-                            } else if (cartItem.selectedVariantCombo === targetCombo) {
-                                match = true;
-                            } else if (cartItem.name && cartItem.name.includes(targetCombo)) {
-                                match = true;
-                            }
-
-                            if (match) {
-                                qtyInCart += parseInt(cartItem.quantity || cartItem.ptquantity || 1, 10);
+                            const dbCombo = cartItem.selectedVariantCombo || cartItem.variant_combo || "";
+                            
+                            if (dbCombo === targetCombo) {
+                                qtyInCart += parseInt(cartItem.quantity || cartItem.productquantity || cartItem.itemquantity || 1, 10);
                             }
                         }
                     });
@@ -208,14 +204,24 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
         }
     };
 
+    // --- FIX: Explicitly append custom_name and variant_combo to the payload ---
     const confirmAddToCart = () => {
         const itemToAdd = { ...product };
+        const finalPriceToSet = selectedVariant && selectedVariant.price ? selectedVariant.price : (product.price || product.itemprice);
+        
+        itemToAdd.price = finalPriceToSet;
+        itemToAdd.itemprice = finalPriceToSet;
+
         if (selectedVariant && selectedVariant.combo) {
-             itemToAdd.price = selectedVariant.price;
-             itemToAdd.itemprice = selectedVariant.price;
-             itemToAdd.name = `${product.name || product.productname || product.itemname} - ${selectedVariant.combo.join(' / ')}`;
-             itemToAdd.selectedVariantCombo = selectedVariant.combo.join(' / '); 
+             const comboStr = selectedVariant.combo.join(' / ');
+             const augmentedName = `${product.name || product.productname || product.itemname} - ${comboStr}`;
+             
+             itemToAdd.name = augmentedName;
+             itemToAdd.custom_name = augmentedName; // Fallback for parent request
+             itemToAdd.selectedVariantCombo = comboStr; 
+             itemToAdd.variant_combo = comboStr;    // Fallback for parent request
         }
+
         onAddToCart(itemToAdd, quantity);
         onClose(); 
     };
@@ -223,10 +229,23 @@ export default function ProductDetailsModal({ product, onClose, onAddToCart }: P
     const handleAddToWishlist = async () => {
         setWishlistLoading(true);
         try {
+            const variantPrice = selectedVariant && selectedVariant.price ? selectedVariant.price : (product.price || product.itemprice);
+            const variantCombo = selectedVariant && selectedVariant.combo ? selectedVariant.combo.join(' / ') : null;
+            const baseName = product.name || product.productname || product.itemname;
+            const augmentedName = variantCombo ? `${baseName} - ${variantCombo}` : baseName;
+
             const res = await fetch('/api/whishlist', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: product.id || product.itemid || product.productid, type: product.type || 'product' })
+                body: JSON.stringify({ 
+                    id: product.id || product.itemid || product.productid, 
+                    type: product.type || 'product',
+                    price: variantPrice,
+                    selectedVariantCombo: variantCombo,
+                    variant_combo: variantCombo, // Sending explicitly
+                    name: augmentedName,
+                    custom_name: augmentedName // Sending explicitly
+                })
             });
             
             const contentType = res.headers.get("content-type");

@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useState, useEffect } from "react";

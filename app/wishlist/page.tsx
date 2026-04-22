@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -45,8 +51,10 @@ export default function WishlistPage() {
     setConfirmDialog({ show: false, itemId: '', itemType: '', itemName: '' });
   };
 
+  // --- ENHANCEMENT: ADD TO CART & THEN REMOVE FROM WISHLIST ---
   const handleAddToCart = async (item: any) => {
     try {
+        // 1. Add to Cart
         const res = await fetch('/api/cart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -54,7 +62,18 @@ export default function WishlistPage() {
         });
 
         if (res.ok) {
-            setAlertState({ show: true, title: 'Added to Bag', message: `"${item.name}" has been successfully added to your cart.`, type: 'success', redirect: '' });
+            setAlertState({ show: true, title: 'Added to Cart', message: `"${item.name}" has been successfully added to your cart.`, type: 'success', redirect: '' });
+            
+            // 2. Remove from Wishlist after successful addition
+            await fetch('/api/whishlist', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: item.id, type: item.type }),
+            });
+            
+            // 3. Refresh Wishlist
+            fetchWishlist();
+            
         } else {
             const data = await res.json();
             setAlertState({ show: true, title: 'Notice', message: data.error || 'Failed to add item.', type: 'error', redirect: '' });
@@ -74,11 +93,21 @@ export default function WishlistPage() {
       
       <main className="container mx-auto px-4 md:px-6 py-10 max-w-[1200px]">
         
-        {/* --- HERO SECTION (Matches Cart Page Style) --- */}
+        {/* --- HERO SECTION --- */}
         <div className="bg-white rounded-[2.5rem] p-10 md:p-12 shadow-sm border border-slate-100 mb-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-[#fff5f4] to-transparent pointer-events-none opacity-80"></div>
             
             <div className="relative z-10 text-center md:text-left">
+                
+                {/* ENHANCEMENT: BACK BUTTON */}
+                <button 
+                    onClick={() => router.back()} 
+                    className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-[#F76D82] transition-colors uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-full w-fit mx-auto md:mx-0 border border-slate-100"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Go Back
+                </button>
+
                 <div className="inline-block bg-[#fff5f4] px-4 py-1.5 rounded-full border border-[#FFAFA8]/30 text-[10px] font-bold tracking-[0.2em] uppercase mb-4 text-[#F76D82]">
                     Favorites Ready
                 </div>

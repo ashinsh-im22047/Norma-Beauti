@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState, Suspense } from 'react';
@@ -15,6 +21,9 @@ function OrdersContent() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // --- NEW: TRACK VIEWED ORDERS ---
+  const [viewedOrders, setViewedOrders] = useState<number[]>([]);
+  
   // --- ADVANCED FILTER STATES ---
   const [statusFilter, setStatusFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,9 +39,16 @@ function OrdersContent() {
 
   // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
+  const [showFeeSettings, setShowFeeSettings] = useState(false);
+  
   const [minDays, setMinDays] = useState('3');
   const [maxDays, setMaxDays] = useState('5');
+  const [deliveryFee, setDeliveryFee] = useState('350');
+  
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // --- NEW: CUSTOM ALERT STATE ---
+  const [alertState, setAlertState] = useState({ show: false, type: 'success', title: '', message: '' });
 
   // STATUS OPTIONS
   const STATUS_OPTIONS = ["Processing", "Delivered", "Cancelled", "Rejected", "Pending"];
@@ -40,6 +56,12 @@ function OrdersContent() {
   useEffect(() => {
     fetchOrders();
     fetchDeliverySettings();
+    
+    // Load viewed orders from local storage on mount
+    const storedViewed = localStorage.getItem('adminViewedOrders');
+    if (storedViewed) {
+        try { setViewedOrders(JSON.parse(storedViewed)); } catch (e) {}
+    }
   }, []);
 
   const fetchOrders = async () => {
@@ -69,6 +91,7 @@ function OrdersContent() {
               const data = await res.json();
               setMinDays(data.min_delivery_days?.toString() || '3');
               setMaxDays(data.max_delivery_days?.toString() || '5');
+              setDeliveryFee(data.delivery_fee?.toString() || '350');
           }
       } catch (error) {
           console.error("Failed to load delivery settings", error);
@@ -82,7 +105,7 @@ function OrdersContent() {
       const max = parseInt(maxDays);
       
       if (min >= max) {
-          alert("Maximum delivery days must be greater than Minimum delivery days.");
+          setAlertState({ show: true, type: 'error', title: 'Invalid Input', message: 'Maximum delivery days must be greater than Minimum delivery days.' });
           return;
       }
 
@@ -95,13 +118,45 @@ function OrdersContent() {
           });
           
           if (res.ok) {
-              alert("Estimated delivery days updated successfully!");
+              setAlertState({ show: true, type: 'success', title: 'Settings Saved', message: 'Estimated delivery days updated successfully!' });
               setShowSettings(false);
           } else {
-              alert("Failed to save settings.");
+              setAlertState({ show: true, type: 'error', title: 'Update Failed', message: 'Failed to save delivery time settings.' });
           }
       } catch (error) {
           console.error("Save settings error:", error);
+          setAlertState({ show: true, type: 'error', title: 'System Error', message: 'An error occurred while saving.' });
+      } finally {
+          setSavingSettings(false);
+      }
+  };
+
+  const handleSaveFeeSettings = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const fee = parseFloat(deliveryFee);
+      
+      if (isNaN(fee) || fee < 0) {
+          setAlertState({ show: true, type: 'error', title: 'Invalid Fee', message: 'Please enter a valid delivery fee (cannot be negative).' });
+          return;
+      }
+
+      setSavingSettings(true);
+      try {
+          const res = await fetch('/api/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ delivery_fee: fee })
+          });
+          
+          if (res.ok) {
+              setAlertState({ show: true, type: 'success', title: 'Settings Saved', message: 'Delivery fee updated successfully!' });
+              setShowFeeSettings(false);
+          } else {
+              setAlertState({ show: true, type: 'error', title: 'Update Failed', message: 'Failed to save delivery fee.' });
+          }
+      } catch (error) {
+          console.error("Save settings error:", error);
+          setAlertState({ show: true, type: 'error', title: 'System Error', message: 'An error occurred while saving.' });
       } finally {
           setSavingSettings(false);
       }
@@ -126,6 +181,13 @@ function OrdersContent() {
     setSelectedOrder(order);
     setLoadingItems(true);
     setOrderItems([]); 
+    
+    // --- MARK ORDER AS VIEWED ---
+    if (!viewedOrders.includes(order.orderid)) {
+        const newViewed = [...viewedOrders, order.orderid];
+        setViewedOrders(newViewed);
+        localStorage.setItem('adminViewedOrders', JSON.stringify(newViewed));
+    }
 
     try {
         const res = await fetch(`/api/admin/order-item?orderId=${order.orderid}`);
@@ -199,7 +261,14 @@ function OrdersContent() {
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Order Management</h1>
                   <p className="text-sm text-slate-500 mt-2 font-medium">View, process, and update customer orders.</p>
               </div>
-              <div className="relative z-10">
+              <div className="relative z-10 flex gap-3">
+                  <button 
+                      onClick={() => setShowFeeSettings(true)} 
+                      className="px-6 py-3 bg-white text-slate-600 border border-slate-200 rounded-full shadow-sm text-sm font-bold hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8] transition-all flex items-center gap-2"
+                  >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Edit Delivery Fee
+                  </button>
                   <button 
                       onClick={() => setShowSettings(true)} 
                       className="px-6 py-3 bg-white text-slate-600 border border-slate-200 rounded-full shadow-sm text-sm font-bold hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8] transition-all flex items-center gap-2"
@@ -297,74 +366,80 @@ function OrdersContent() {
                                 </td>
                             </tr>
                         ) : (
-                            filteredOrders.map((order) => (
-                                <tr 
-                                  key={order.orderid} 
-                                  className={`transition-all duration-300 ${
-                                      String(order.orderid) === highlightId 
-                                        ? 'bg-[#fff5f4] border-l-4 border-l-[#FFAFA8]' 
-                                        : 'hover:bg-slate-50 border-l-4 border-l-transparent'
-                                  }`}
-                                >
-                                    <td className="p-5 pl-8 font-bold text-slate-800 tracking-wide whitespace-nowrap">
-                                        #{order.orderid}
-                                        {String(order.orderid) === highlightId && (
-                                            <span className="ml-2 text-[9px] bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-2 py-0.5 rounded-full font-bold shadow-sm tracking-widest uppercase animate-pulse">New</span>
-                                        )}
-                                    </td>
-                                    <td className="p-5 min-w-[180px]">
-                                        <div className="font-bold text-slate-700">{order.shipping_name}</div>
-                                        <div className="text-xs text-slate-400 mt-0.5 font-medium">{order.shipping_phone}</div>
-                                    </td>
-                                    
-                                    <td className="p-5 whitespace-nowrap">
-                                        <div className="font-bold text-slate-700 text-sm">
-                                            {new Date(order.orderdate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                        </div>
-                                        <div className="text-xs text-slate-400 font-medium mt-0.5">
-                                            {new Date(order.orderdate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </td>
+                            filteredOrders.map((order) => {
+                                // Logic to check if this is a newly placed, unviewed order OR if highlighted via URL
+                                const isNewUnviewed = order.status === 'Pending' && !viewedOrders.includes(order.orderid);
+                                const isHighlightedRow = String(order.orderid) === highlightId || isNewUnviewed;
 
-                                    <td className="p-5 font-bold text-slate-800 whitespace-nowrap tracking-wide">{parseFloat(order.totalamount).toLocaleString()}</td>
-                                    <td className="p-5 text-sm">
-                                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm ${order.paymentmethod === 'COD' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
-                                            {order.paymentmethod}
-                                        </span>
-                                    </td>
-                                    <td className="p-5">
-                                        <div className="relative">
-                                            <select 
-                                                value={order.status}
-                                                onChange={(e) => handleStatusChange(order.orderid, e.target.value)}
-                                                className={`pl-3 pr-8 py-2 rounded-xl text-xs font-bold border outline-none cursor-pointer transition-all shadow-sm appearance-none ${
-                                                    order.status === 'Pending' ? 'bg-amber-50 text-amber-600 border-amber-200 focus:ring-2 focus:ring-amber-200' :
-                                                    order.status === 'Processing' ? 'bg-blue-50 text-blue-600 border-blue-200 focus:ring-2 focus:ring-blue-200' :
-                                                    order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 focus:ring-2 focus:ring-emerald-200' :
-                                                    'bg-rose-50 text-rose-600 border-rose-200 focus:ring-2 focus:ring-rose-200'
-                                                }`}
-                                            >
-                                                {!STATUS_OPTIONS.includes(order.status) && (
-                                                    <option value={order.status}>{order.status}</option>
-                                                )}
-                                                {STATUS_OPTIONS.map(status => (
-                                                    <option key={status} value={status}>{status}</option>
-                                                ))}
-                                            </select>
-                                            <svg className={`w-3.5 h-3.5 absolute right-2.5 top-2.5 pointer-events-none ${
-                                                    order.status === 'Pending' ? 'text-amber-500' :
-                                                    order.status === 'Processing' ? 'text-blue-500' :
-                                                    order.status === 'Delivered' ? 'text-emerald-500' : 'text-rose-500'
-                                            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-                                        </div>
-                                    </td>
-                                    <td className="p-5 pr-8 text-center">
-                                        <button onClick={() => handleViewDetails(order)} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-full text-xs font-bold shadow-sm hover:shadow-md hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8] transition-all whitespace-nowrap">
-                                            View Details
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                                return (
+                                    <tr 
+                                      key={order.orderid} 
+                                      className={`transition-all duration-300 ${
+                                          isHighlightedRow
+                                            ? 'bg-[#fff5f4] border-l-4 border-l-[#FFAFA8]' 
+                                            : 'hover:bg-slate-50 border-l-4 border-l-transparent'
+                                      }`}
+                                    >
+                                        <td className="p-5 pl-8 font-bold text-slate-800 tracking-wide whitespace-nowrap">
+                                            #{order.orderid}
+                                            {isHighlightedRow && (
+                                                <span className="ml-2 text-[9px] bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white px-2 py-0.5 rounded-full font-bold shadow-sm tracking-widest uppercase animate-pulse">New</span>
+                                            )}
+                                        </td>
+                                        <td className="p-5 min-w-[180px]">
+                                            <div className="font-bold text-slate-700">{order.shipping_name}</div>
+                                            <div className="text-xs text-slate-400 mt-0.5 font-medium">{order.shipping_phone}</div>
+                                        </td>
+                                        
+                                        <td className="p-5 whitespace-nowrap">
+                                            <div className="font-bold text-slate-700 text-sm">
+                                                {new Date(order.orderdate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                            </div>
+                                            <div className="text-xs text-slate-400 font-medium mt-0.5">
+                                                {new Date(order.orderdate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </td>
+
+                                        <td className="p-5 font-bold text-slate-800 whitespace-nowrap tracking-wide">{parseFloat(order.totalamount).toLocaleString()}</td>
+                                        <td className="p-5 text-sm">
+                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-sm ${order.paymentmethod === 'COD' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'}`}>
+                                                {order.paymentmethod}
+                                            </span>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="relative">
+                                                <select 
+                                                    value={order.status}
+                                                    onChange={(e) => handleStatusChange(order.orderid, e.target.value)}
+                                                    className={`pl-3 pr-8 py-2 rounded-xl text-xs font-bold border outline-none cursor-pointer transition-all shadow-sm appearance-none ${
+                                                        order.status === 'Pending' ? 'bg-amber-50 text-amber-600 border-amber-200 focus:ring-2 focus:ring-amber-200' :
+                                                        order.status === 'Processing' ? 'bg-blue-50 text-blue-600 border-blue-200 focus:ring-2 focus:ring-blue-200' :
+                                                        order.status === 'Delivered' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 focus:ring-2 focus:ring-emerald-200' :
+                                                        'bg-rose-50 text-rose-600 border-rose-200 focus:ring-2 focus:ring-rose-200'
+                                                    }`}
+                                                >
+                                                    {!STATUS_OPTIONS.includes(order.status) && (
+                                                        <option value={order.status}>{order.status}</option>
+                                                    )}
+                                                    {STATUS_OPTIONS.map(status => (
+                                                        <option key={status} value={status}>{status}</option>
+                                                    ))}
+                                                </select>
+                                                <svg className={`w-3.5 h-3.5 absolute right-2.5 top-2.5 pointer-events-none ${
+                                                        order.status === 'Pending' ? 'text-amber-500' :
+                                                        order.status === 'Processing' ? 'text-blue-500' :
+                                                        order.status === 'Delivered' ? 'text-emerald-500' : 'text-rose-500'
+                                                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 pr-8 text-center">
+                                            <button onClick={() => handleViewDetails(order)} className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-full text-xs font-bold shadow-sm hover:shadow-md hover:bg-slate-50 hover:text-[#ff8a80] hover:border-[#FFAFA8] transition-all whitespace-nowrap">
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
@@ -378,7 +453,7 @@ function OrdersContent() {
             </div>
           </div>
 
-          {/* DELIVERY SETTINGS MODAL */}
+          {/* DELIVERY TIME SETTINGS MODAL */}
           {showSettings && (
               <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
                   <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full relative">
@@ -397,6 +472,32 @@ function OrdersContent() {
                               <div className="flex-1">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block mb-1.5">Max Days</label>
                                   <input type="number" required min="1" value={maxDays} onChange={e => setMaxDays(e.target.value)} className="w-full p-3.5 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 font-bold text-center shadow-sm transition-all" />
+                              </div>
+                          </div>
+                          <button type="submit" disabled={savingSettings} className={`w-full py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md tracking-wide transition-all ${savingSettings ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-[1.02]'}`}>
+                              {savingSettings ? 'Saving...' : 'Save Settings'}
+                          </button>
+                      </form>
+                  </div>
+              </div>
+          )}
+
+          {/* DELIVERY FEE SETTINGS MODAL (NEW) */}
+          {showFeeSettings && (
+              <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fade-in">
+                  <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full relative">
+                      <button onClick={() => setShowFeeSettings(false)} className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors shadow-sm">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                      <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Delivery Fee</h2>
+                      <p className="text-sm text-slate-500 mb-8 font-medium">Set the fixed delivery fee applied to all orders.</p>
+                      
+                      <form onSubmit={handleSaveFeeSettings} className="space-y-6">
+                          <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1 block mb-1.5">Fee Amount (LKR)</label>
+                              <div className="relative">
+                                  <span className="absolute left-4 top-3.5 font-bold text-slate-400 text-sm">LKR</span>
+                                  <input type="number" required min="0" step="0.01" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} className="w-full pl-12 p-3.5 rounded-xl border border-slate-200 outline-none bg-slate-50 focus:bg-white focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 font-bold shadow-sm transition-all" />
                               </div>
                           </div>
                           <button type="submit" disabled={savingSettings} className={`w-full py-3.5 bg-gradient-to-r from-[#FFAFA8] to-[#ff8a80] text-white rounded-full font-bold shadow-md tracking-wide transition-all ${savingSettings ? 'opacity-70 cursor-not-allowed' : 'hover:shadow-lg hover:scale-[1.02]'}`}>
@@ -501,10 +602,33 @@ function OrdersContent() {
 
                     {/* Footer Total */}
                     <div className="pt-6 border-t border-slate-100 flex justify-between items-center bg-gradient-to-r from-white to-[#fffafa] shrink-0 mt-4">
-                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order Total</span>
+                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order Total (Includes Delivery)</span>
                          <span className="text-3xl font-bold tracking-tight text-slate-900">LKR {parseFloat(selectedOrder.totalamount).toLocaleString()}</span>
                     </div>
                 </div>
+            </div>
+          )}
+
+          {/* --- CUSTOM ELEGANT ALERT DIALOG --- */}
+          {alertState.show && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+               <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 relative transform transition-all scale-100">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white ${alertState.type === 'success' ? 'bg-emerald-50 text-emerald-500 shadow-emerald-200' : 'bg-rose-50 text-rose-500 shadow-rose-200'}`}>
+                    {alertState.type === 'success' ? (
+                        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    ) : (
+                        <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    )}
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3 text-slate-900 tracking-tight">{alertState.title}</h3>
+                  <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">{alertState.message}</p>
+                  <button 
+                    onClick={() => setAlertState({ ...alertState, show: false })}
+                    className={`px-10 py-3.5 text-white rounded-full font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all w-full tracking-wide uppercase text-xs ${alertState.type === 'success' ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : 'bg-gradient-to-r from-rose-400 to-rose-500'}`}
+                  >
+                    Close
+                  </button>
+               </div>
             </div>
           )}
       </div>

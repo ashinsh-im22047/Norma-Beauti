@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { Suspense, useState, useEffect, useRef } from 'react';
@@ -10,7 +16,7 @@ type FeatureGroup = { name: string; values: FeatureValue[] };
 type ProductVariant = { combo: string[]; price: string; quantity: string; image: string; file?: File | null };
 type SelectedProduct = { id: string; qty: number }; 
 
-// --- BUG FIX: SAFE JSON PARSER ---
+// --- BUG FIX: SAFE JSON PARSER (Error handling) 
 const safeParseArray = (data: any) => {
     if (Array.isArray(data)) return data;
     if (typeof data === 'string') {
@@ -204,27 +210,43 @@ function ProductListContent() {
   const removeFeatureValue = (groupIndex: number, valueIndex: number) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values = newFeatures[groupIndex].values.filter((_, i) => i !== valueIndex); return { ...prev, features: newFeatures }; });
   const updateFeatureValueName = (groupIndex: number, valueIndex: number, name: string) => setFormData(prev => { const newFeatures = [...prev.features]; newFeatures[groupIndex].values[valueIndex].name = name; return { ...prev, features: newFeatures }; });
   
-  // Variant Handlers
-  const updateVariantPrice = (idx: number, val: string) => { setFormData(prev => { const newV = [...prev.variants]; newV[idx].price = val; return {...prev, variants: newV}; }); };
-  const updateVariantQty = (idx: number, val: string) => { setFormData(prev => { const newV = [...prev.variants]; newV[idx].quantity = val; return {...prev, variants: newV}; }); };
+  // --- REAL-TIME VALIDATED Variant Handlers ---
+  const updateVariantPrice = (idx: number, val: string) => { 
+      if (val.includes('-') || Number(val) < 0) return showAlert("Invalid Input", "Variant price cannot be negative.");
+      setFormData(prev => { const newV = [...prev.variants]; newV[idx].price = val; return {...prev, variants: newV}; }); 
+  };
+  const updateVariantQty = (idx: number, val: string) => { 
+      if (val.includes('-') || Number(val) < 0) return showAlert("Invalid Input", "Variant quantity cannot be negative.");
+      setFormData(prev => { const newV = [...prev.variants]; newV[idx].quantity = val; return {...prev, variants: newV}; }); 
+  };
   const handleVariantImageChange = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
           const file = e.target.files[0];
           setFormData(prev => { const newV = [...prev.variants]; newV[idx].file = file; return { ...prev, variants: newV }; });
       }
   };
-
+// Add a New Product
   const handleSave = async () => {
       if (!formData.name) return showAlert("Missing Input", "Please fill in the Name field.");
       let finalQuantity = formData.quantity; let finalPrice = formData.price;
+      
+      // Fallback Validation
       if (formData.variants.length > 0) {
           const totalQty = formData.variants.reduce((sum, v) => sum + (parseInt(v.quantity) || 0), 0);
           finalQuantity = totalQty.toString();
           if (totalQty === 0) return showAlert("Missing Input", "Please enter quantities for your product variants.");
+          
+          for (const variant of formData.variants) {
+              if (parseFloat(variant.price) < 0) return showAlert("Invalid Input", "Variant price cannot be negative.");
+              if (parseInt(variant.quantity) < 0) return showAlert("Invalid Input", "Variant quantity cannot be negative.");
+          }
       } else {
           if (!formData.price || !formData.quantity) return showAlert("Missing Input", "Please fill in Price and Quantity.");
           if (parseFloat(formData.price) < 0) return showAlert("Invalid Input", "Price cannot be negative.");
+          if (parseInt(formData.quantity) < 0) return showAlert("Invalid Input", "Quantity cannot be negative.");
       }
+
+      if (parseInt(formData.minStock) < 0) return showAlert("Invalid Input", "Minimum alert cannot be negative.");
 
       if (formData.images.length === 0 && filesToUpload.length === 0) return showAlert("Missing Input", "Please provide at least one product image.");
       if (isReadyMade && formData.selectedProducts.length === 0) return showAlert("Empty Box", "Please select at least one product for this box.");
@@ -258,7 +280,7 @@ function ProductListContent() {
             image: finalImageUrls[0] || '', images: finalImageUrls, features: formData.features, variants: processedVariants,
             includedProducts: isReadyMade ? formData.selectedProducts : [] 
         };
-
+//adding or update a inventory product  
         let res;
         const submitId = currentItemId;
         if (isEditing && submitId) res = await fetch(`/api/inventory-items/${submitId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -274,9 +296,16 @@ function ProductListContent() {
 
   const handleNestedProductSave = async () => {
     if (!nestedProductFormData.name || !nestedProductFormData.price || !nestedProductFormData.quantity) return showAlert("Error", "Fill Name, Price and Quantity for the new product.");
+    
+    // Fallback Validation
+    if (parseFloat(nestedProductFormData.price) < 0) return showAlert("Invalid Input", "Price cannot be negative.");
+    if (parseInt(nestedProductFormData.quantity) < 0) return showAlert("Invalid Input", "Quantity cannot be negative.");
+    if (parseInt(nestedProductFormData.minStock) < 0) return showAlert("Invalid Input", "Minimum alert cannot be negative.");
+
     if (nestedProductFormData.files.length === 0) return showAlert("Error", "Please add an image for the new product.");
     setIsSubmittingNested(true);
 
+    //Add new Inventory Item
     try {
         const imageUrls = await Promise.all(
             nestedProductFormData.files.map(async file => {
@@ -298,7 +327,7 @@ function ProductListContent() {
         }
     } catch (err) { showAlert("Error", "Failed to create new product."); } finally { setIsSubmittingNested(false); }
   };
-
+//Delete Product
   const handleDelete = (id: string) => {
     setAlertState({
         show: true, title: "Confirm Delete", message: "Delete this item? This action is permanent.", type: "confirm",
@@ -476,9 +505,11 @@ function ProductListContent() {
                     <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 font-bold">Price</p>
                     <p className="font-bold text-slate-900 text-xl">{displayPriceText}</p>
                 </div>
+                {/* --- ADDED: DECLINE BUTTON --- */}
                 {isPending && (
                     <div className="flex gap-2" onClick={e=>e.stopPropagation()}>
-                        <button onClick={(e) => handleApproval(e, cardId, 'approved')} className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md hover:scale-105 transition-transform">Approve</button>
+                        <button onClick={(e) => handleApproval(e, cardId, 'approved')} className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:scale-105 transition-transform">Approve</button>
+                        <button onClick={(e) => handleApproval(e, cardId, 'rejected')} className="bg-gradient-to-r from-rose-400 to-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:scale-105 transition-transform">Decline</button>
                     </div>
                 )}
                 {!isPending && safeVariants.length > 0 && (
@@ -601,7 +632,6 @@ function ProductListContent() {
                                    <div className="flex flex-col gap-3 pl-3 border-l-2 border-slate-100 ml-2">
                                        {featureGroup.values.map((val, valIndex) => (
                                            <div key={valIndex} className="flex gap-3 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                                               {/* Image removed from here */}
                                                <input value={val.name} onChange={e => updateFeatureValueName(groupIndex, valIndex, e.target.value)} placeholder="Feature Value (e.g. Red)" className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder-slate-400 font-medium"/>
                                                <button onClick={() => removeFeatureValue(groupIndex, valIndex)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white text-slate-400 hover:text-white hover:bg-rose-400 border border-slate-200 transition shrink-0 mr-1 shadow-sm">
                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -620,7 +650,6 @@ function ProductListContent() {
                                    <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-1">
                                        {formData.variants.map((variant, idx) => (
                                            <div key={idx} className="flex gap-4 items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                               {/* Image added to Matrix level */}
                                                <label className="w-12 h-12 rounded-lg border-2 border-dashed border-[#FFAFA8] flex items-center justify-center overflow-hidden cursor-pointer hover:bg-slate-50 transition shrink-0 bg-slate-50 relative group shadow-sm" title="Variant Image (Optional)">
                                                     {variant.file ? <img src={URL.createObjectURL(variant.file)} className="w-full h-full object-cover" /> : variant.image ? <img src={variant.image} className="w-full h-full object-cover" /> : 
                                                     <svg className="w-5 h-5 text-[#FFAFA8]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
@@ -629,8 +658,24 @@ function ProductListContent() {
                                                </label>
                                                <div className="flex-1 text-sm font-bold text-slate-700 pl-2 break-words leading-tight">{variant.combo.join(' / ')}</div>
                                                <div className="flex flex-col gap-2 w-28 shrink-0">
-                                                   <input type="number" placeholder="Price" value={variant.price} onChange={(e) => updateVariantPrice(idx, e.target.value)} className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Price"/>
-                                                   <input type="number" placeholder="Qty" value={variant.quantity} onChange={(e) => updateVariantQty(idx, e.target.value)} className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Stock"/>
+                                                   <input type="number" min="0" placeholder="Price" value={variant.price} 
+                                                     onChange={(e) => {
+                                                         if (e.target.value.includes('-') || Number(e.target.value) < 0) {
+                                                             showAlert("Invalid Input", "Variant price cannot be negative.");
+                                                             return;
+                                                         }
+                                                         updateVariantPrice(idx, e.target.value);
+                                                     }} 
+                                                     className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Price"/>
+                                                   <input type="number" min="0" placeholder="Qty" value={variant.quantity} 
+                                                     onChange={(e) => {
+                                                         if (e.target.value.includes('-') || Number(e.target.value) < 0) {
+                                                             showAlert("Invalid Input", "Variant quantity cannot be negative.");
+                                                             return;
+                                                         }
+                                                         updateVariantQty(idx, e.target.value);
+                                                     }} 
+                                                     className="w-full bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none border border-slate-200 focus:border-[#FFAFA8] focus:ring-1 focus:ring-[#FFAFA8] text-center transition-all" title="Stock"/>
                                                </div>
                                            </div>
                                        ))}
@@ -644,15 +689,30 @@ function ProductListContent() {
                    <div className="flex gap-4">
                        <div className="flex-1">
                            <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Price</label>
-                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.price} 
+                            onChange={e => {
+                                if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Price cannot be negative.");
+                                setFormData({...formData, price: e.target.value});
+                            }} 
+                            className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`} placeholder={formData.variants.length > 0 ? "Matrix" : ""}/>
                        </div>
                        <div className="flex-1">
                            <label className="text-xs font-bold text-slate-500 ml-3 uppercase">Qty</label>
-                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`}/>
+                           <input type="number" min="0" disabled={formData.variants.length > 0} value={formData.variants.length > 0 ? formData.variants.reduce((acc, v) => acc + (parseInt(v.quantity)||0), 0) : formData.quantity} 
+                            onChange={e => {
+                                if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Quantity cannot be negative.");
+                                setFormData({...formData, quantity: e.target.value});
+                            }} 
+                            className={`w-full rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-center transition-all ${formData.variants.length > 0 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-50 text-slate-800'}`}/>
                        </div>
                        <div className="flex-1">
                            <label className="text-xs font-bold text-slate-500 ml-3 uppercase" title="Minimum Stock Alert Level">Min Alert</label>
-                           <input type="number" min="0" value={formData.minStock} onChange={e => setFormData({...formData, minStock: e.target.value})} className="w-full bg-slate-50 rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 text-center transition-all"/>
+                           <input type="number" min="0" value={formData.minStock} 
+                            onChange={e => {
+                                if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Minimum alert cannot be negative.");
+                                setFormData({...formData, minStock: e.target.value});
+                            }} 
+                            className="w-full bg-slate-50 rounded-full px-4 py-3 border border-slate-200 outline-none focus:ring-2 focus:ring-[#FFAFA8] text-slate-800 text-center transition-all"/>
                        </div>
                    </div>
                    
@@ -741,9 +801,26 @@ function ProductListContent() {
                                 </div>
                                 <input value={nestedProductFormData.name} onChange={e => setNestedProductFormData({...nestedProductFormData, name: e.target.value})} placeholder="New Product Name" className="w-full bg-white rounded-full px-5 py-3 outline-none border border-slate-200 text-sm text-slate-800 shrink-0 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
                                 <div className="flex gap-4 shrink-0">
-                                    <input type="number" min="0" placeholder="Price" value={nestedProductFormData.price} onChange={e => setNestedProductFormData({...nestedProductFormData, price: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
-                                    <input type="number" min="0" placeholder="Initial Qty" value={nestedProductFormData.quantity} onChange={e => setNestedProductFormData({...nestedProductFormData, quantity: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
-                                    <input type="number" min="0" placeholder="Min Alert" value={nestedProductFormData.minStock} onChange={e => setNestedProductFormData({...nestedProductFormData, minStock: e.target.value})} className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                    <input type="number" min="0" placeholder="Price" value={nestedProductFormData.price} 
+                                      onChange={e => {
+                                          if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Price cannot be negative.");
+                                          setNestedProductFormData({...nestedProductFormData, price: e.target.value});
+                                      }} 
+                                      className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                    
+                                    <input type="number" min="0" placeholder="Initial Qty" value={nestedProductFormData.quantity} 
+                                      onChange={e => {
+                                          if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Quantity cannot be negative.");
+                                          setNestedProductFormData({...nestedProductFormData, quantity: e.target.value});
+                                      }} 
+                                      className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
+                                    
+                                    <input type="number" min="0" placeholder="Min Alert" value={nestedProductFormData.minStock} 
+                                      onChange={e => {
+                                          if (e.target.value.includes('-') || Number(e.target.value) < 0) return showAlert("Invalid Input", "Minimum alert cannot be negative.");
+                                          setNestedProductFormData({...nestedProductFormData, minStock: e.target.value});
+                                      }} 
+                                      className="w-1/3 bg-white rounded-full px-4 py-3 border border-slate-200 text-sm text-slate-800 text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
                                 </div>
                                 <input value={nestedProductFormData.description} onChange={e => setNestedProductFormData({...nestedProductFormData, description: e.target.value})} placeholder="Optional Description" className="w-full bg-white rounded-full px-5 py-3 border border-slate-200 text-sm text-slate-800 shrink-0 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 shadow-sm transition-all"/>
                                 <label className="w-full h-24 bg-white rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-indigo-300 text-slate-500 text-sm cursor-pointer hover:bg-slate-50 transition shrink-0"><input type="file" multiple onChange={(e) => e.target.files && setNestedProductFormData({...nestedProductFormData, files: [...nestedProductFormData.files, ...Array.from(e.target.files)]})} className="hidden" accept="image/*"/>

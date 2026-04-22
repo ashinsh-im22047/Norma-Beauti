@@ -7,15 +7,34 @@ export default function CustomerHeader() {
   const router = useRouter();
   const pathname = usePathname(); 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // --- CUSTOM DIALOG STATE ---
   const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
     const session = document.cookie.includes('user_session'); 
     setIsLoggedIn(session);
+
+    if (session) {
+        fetchUnreadCount();
+        // Optional: Poll every 30 seconds for new notifications
+        const interval = setInterval(fetchUnreadCount, 30000);
+        return () => clearInterval(interval);
+    }
   }, []);
+
+  const fetchUnreadCount = async () => {
+      try {
+          const res = await fetch('/api/notifications');
+          if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data)) {
+                  const unread = data.filter((n: any) => !n.is_read).length;
+                  setUnreadCount(unread);
+              }
+          }
+      } catch (error) { console.error(error); }
+  };
 
   const handleLogout = async () => {
     document.cookie = "user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -38,21 +57,13 @@ export default function CustomerHeader() {
     router.push('/login');
   };
 
-  // --- HELPER: Check if a path is active ---
   const isActive = (path: string) => pathname === path;
-  
-  // Profile is active for profile page OR sub-pages like wishlist/orders
   const isProfileActive = pathname.startsWith('/profile') || pathname === '/wishlist';
 
   return (
     <>
-      {/* MAIN HEADER CONTENT 
-          - ලා රෝස (Light Pink) Gradient එකක් භාවිතා කර ඇත (from-[#fff5f4] to-[#FFAFA8]/40)
-          - සුදු පාට සම්පූර්ණයෙන්ම අයින් කර ඇත.
-      */}
       <header className="bg-gradient-to-r from-[#fff5f4] via-[#FFE4E1] to-[#FFAFA8]/40 backdrop-blur-md px-6 py-4 flex justify-between items-center shadow-md sticky top-0 z-50 border-b border-[#FFAFA8]/30">
         
-        {/* LEFT: Logo & Brand Name */}
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => router.push('/')}>
           <div className="w-10 h-10 rounded-full bg-white overflow-hidden border-2 border-[#FFAFA8] shadow-sm p-0.5">
              <img src="/logo.jpeg" alt="Logo" className="w-full h-full object-contain rounded-full" />
@@ -60,42 +71,24 @@ export default function CustomerHeader() {
           <span className="font-bold text-lg tracking-[0.1em] hidden md:block text-slate-800">NORMA BEAUTI</span>
         </div>
 
-        {/* RIGHT: Navigation & Auth Buttons */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6 md:gap-8">
           
-          {/* Navigation Links */}
           <nav className="hidden md:flex gap-8 text-[11px] font-black tracking-[0.2em] items-center">
-              
-              <Link 
-                  href="/shop" 
-                  className={`transition-all duration-300 relative py-1 ${
-                      isActive('/') || isActive('/shop') ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
+              <Link href="/shop" className={`transition-all duration-300 relative py-1 ${isActive('/') || isActive('/shop') ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'}`}>
                   HOME
                   {(isActive('/') || isActive('/shop')) && (
                       <span className="absolute -bottom-1 left-0 w-full h-[2.5px] bg-[#ff8a80] rounded-full shadow-[0_0_8px_#ff8a80]"></span>
                   )}
               </Link>
               
-              <button 
-                  onClick={(e) => handleProtectedClick(e, '/cart')} 
-                  className={`transition-all duration-300 uppercase relative py-1 tracking-[0.2em] font-black ${
-                      isActive('/cart') ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
+              <button onClick={(e) => handleProtectedClick(e, '/cart')} className={`transition-all duration-300 uppercase relative py-1 tracking-[0.2em] font-black ${isActive('/cart') ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'}`}>
                   CART
                   {isActive('/cart') && (
                       <span className="absolute -bottom-1 left-0 w-full h-[2.5px] bg-[#ff8a80] rounded-full shadow-[0_0_8px_#ff8a80]"></span>
                   )}
               </button>
 
-              <button 
-                  onClick={(e) => handleProtectedClick(e, '/profile')} 
-                  className={`transition-all duration-300 uppercase relative py-1 tracking-[0.2em] font-black ${
-                      isProfileActive ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
+              <button onClick={(e) => handleProtectedClick(e, '/profile')} className={`transition-all duration-300 uppercase relative py-1 tracking-[0.2em] font-black ${isProfileActive ? 'text-[#ff8a80]' : 'text-slate-600 hover:text-slate-900'}`}>
                   PROFILE
                   {isProfileActive && (
                       <span className="absolute -bottom-1 left-0 w-full h-[2.5px] bg-[#ff8a80] rounded-full shadow-[0_0_8px_#ff8a80]"></span>
@@ -103,13 +96,24 @@ export default function CustomerHeader() {
               </button>
           </nav>
 
-          {/* Vertical Divider */}
           <div className="hidden md:block h-6 w-px bg-slate-300/50"></div>
 
-          {/* Auth Buttons */}
-          <div className="flex gap-3">
+          <div className="flex items-center gap-4">
+            
+            {/* --- NEW: NOTIFICATION BELL WITH BADGE --- */}
+            {isLoggedIn && (
+                <button onClick={(e) => handleProtectedClick(e, '/profile/notifications')} className="relative p-2 text-slate-500 hover:text-[#ff8a80] transition-colors group">
+                    <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                    {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-sm animate-pulse">
+                            {unreadCount > 10 ? '10+' : unreadCount}
+                        </span>
+                    )}
+                </button>
+            )}
+
             {isLoggedIn ? (
-              <button onClick={handleLogout} className="bg-slate-900 text-white px-6 py-2 rounded-full font-bold text-[10px] tracking-widest hover:bg-[#ff8a80] transition-all shadow-md">
+              <button onClick={handleLogout} className="bg-slate-900 text-white px-6 py-2 rounded-full font-bold text-[10px] tracking-widest hover:bg-[#ff8a80] transition-all shadow-md ml-2">
                 LOGOUT
               </button>
             ) : (

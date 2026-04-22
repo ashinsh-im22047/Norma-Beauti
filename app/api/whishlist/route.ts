@@ -1,3 +1,9 @@
+// ==========================================
+// File: route.ts
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -44,16 +50,24 @@ export async function GET(req: Request) {
     const wishlistid = await getWishlistId(userid);
     if (!wishlistid) return NextResponse.json({ items: [] }); // Empty wishlist
 
-    // Fetch Products
+    // Fetch Products (Includes Variant Columns)
     const [productRows]: any = await db.query(`
-      SELECT p.productid as id, p.productname as name, p.price, p.imageurl as image, 'product' as type
+      SELECT p.productid as id, 
+             COALESCE(wp.custom_name, p.productname) as name, 
+             COALESCE(wp.price, p.price) as price, 
+             wp.variant_combo as selectedVariantCombo,
+             p.imageurl as image, 'product' as type
       FROM wishlistproducts wp 
       JOIN product p ON wp.productid = p.productid 
       WHERE wp.wishlistid = ?`, [wishlistid]);
       
-    // Fetch Items (Boxes)
+    // --- FIX: Fetch Items (NO Variant Columns to prevent crashes) ---
     const [itemRows]: any = await db.query(`
-      SELECT i.itemid as id, i.itemname as name, i.itemprice as price, i.imageurl as image, 'item' as type
+      SELECT i.itemid as id, 
+             i.itemname as name, 
+             i.itemprice as price, 
+             NULL as selectedVariantCombo,
+             i.imageurl as image, 'item' as type
       FROM wishlistitems wi 
       JOIN item i ON wi.itemid = i.itemid 
       WHERE wi.wishlistid = ?`, [wishlistid]);
@@ -76,12 +90,28 @@ export async function POST(req: Request) {
     const wishlistid = await getWishlistId(userid, true); // Create if missing
     if (!wishlistid) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-    const { id, type } = await req.json();
+    const { id, type, price, selectedVariantCombo, name } = await req.json();
+
+    // Safely parse variant details for database insertion (Products Only)
+    const finalPrice = price !== undefined && price !== null ? parseFloat(price) : null;
+    const finalCombo = selectedVariantCombo || null;
+    const finalName = name || null;
 
     if (type === 'product') {
-      await db.query(`INSERT IGNORE INTO wishlistproducts (wishlistid, productid) VALUES (?, ?)`, [wishlistid, String(id)]);
+      // Products have variants and custom pricing
+      await db.query(
+        `INSERT INTO wishlistproducts (wishlistid, productid, price, variant_combo, custom_name) 
+         VALUES (?, ?, ?, ?, ?) 
+         ON DUPLICATE KEY UPDATE price = ?, variant_combo = ?, custom_name = ?`, 
+        [wishlistid, String(id), finalPrice, finalCombo, finalName, finalPrice, finalCombo, finalName]
+      );
     } else {
-      await db.query(`INSERT IGNORE INTO wishlistitems (wishlistid, itemid) VALUES (?, ?)`, [wishlistid, String(id)]);
+      // --- FIX: Items do not use variant columns ---
+      await db.query(
+        `INSERT IGNORE INTO wishlistitems (wishlistid, itemid) 
+         VALUES (?, ?)`, 
+        [wishlistid, String(id)]
+      );
     }
 
     return NextResponse.json({ message: "Added to wishlist!" }, { status: 200 });

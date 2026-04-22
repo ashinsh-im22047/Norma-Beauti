@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -19,22 +25,30 @@ export default function MyOrdersPage() {
     show: false, type: '', orderId: '', title: '', message: ''
   });
 
-  // --- BEAUTIFUL CUSTOM ALERT STATE ---
   const [alertState, setAlertState] = useState({ 
     show: false, type: 'success', title: '', message: '' 
   });
 
   const [supportMode, setSupportMode] = useState<'menu' | 'review' | 'complaint' | 'return' | null>(null);
+  
   const [supportData, setSupportData] = useState({
       productId: '',
       itemId: '',
       message: '',
       rating: 5,
-      reason: ''
+      reason: '',
+      files: [] as File[] 
   });
   const [submittingSupport, setSubmittingSupport] = useState(false);
 
+  // --- NEW: LOGIC TO HIGHLIGHT ORDER FROM NOTIFICATION ---
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
   useEffect(() => {
+    // Grab the highlight ID from the URL (e.g. ?highlight=123)
+    const params = new URLSearchParams(window.location.search);
+    setHighlightId(params.get('highlight'));
+
     fetchOrders();
     fetch('/api/settings')
         .then(res => res.json())
@@ -42,6 +56,18 @@ export default function MyOrdersPage() {
             if (data.min_delivery_days !== undefined) setDeliveryDays({ min: data.min_delivery_days, max: data.max_delivery_days });
         }).catch(err => console.error(err));
   }, []);
+
+  // Scroll to highlighted order smoothly when orders load
+  useEffect(() => {
+      if (highlightId && orders.length > 0) {
+          setTimeout(() => {
+              const element = document.getElementById(`order-${highlightId}`);
+              if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+          }, 500);
+      }
+  }, [highlightId, orders]);
 
   const getDeliveryInfo = (orderDateString: string) => {
     const baseDate = new Date(orderDateString);
@@ -107,11 +133,39 @@ export default function MyOrdersPage() {
     finally { setLoadingDetails(false); }
   };
 
+  const handleSupportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+          const newFiles = Array.from(e.target.files);
+          if (supportData.files.length + newFiles.length > 3) {
+              setAlertState({ show: true, type: 'error', title: 'Limit Reached', message: 'You can only upload up to 3 images.' });
+              return;
+          }
+          setSupportData(prev => ({ ...prev, files: [...prev.files, ...newFiles] }));
+      }
+  };
+
+  const removeSupportFile = (index: number) => {
+      setSupportData(prev => ({ ...prev, files: prev.files.filter((_, i) => i !== index) }));
+  };
+
   const handleSupportSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setSubmittingSupport(true);
 
       try {
+          let uploadedImageUrls: string[] = [];
+          if (supportData.files.length > 0) {
+              uploadedImageUrls = await Promise.all(
+                  supportData.files.map(async file => {
+                      const uploadData = new FormData(); 
+                      uploadData.set('file', file);
+                      const uploadRes = await fetch('/api/upload', { method: 'POST', body: uploadData });
+                      const uploadJson = await uploadRes.json();
+                      return uploadJson.url; 
+                  })
+              );
+          }
+
           const res = await fetch('/api/support', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -119,7 +173,12 @@ export default function MyOrdersPage() {
                   type: supportMode,
                   orderId: selectedOrder.orderid,
                   customerName: selectedOrder.shipping_name, 
-                  ...supportData
+                  productId: supportData.productId,
+                  itemId: supportData.itemId,
+                  message: supportData.message,
+                  rating: supportData.rating,
+                  reason: supportData.reason,
+                  images: uploadedImageUrls
               })
           });
 
@@ -127,7 +186,7 @@ export default function MyOrdersPage() {
               const data = await res.json();
               setAlertState({ show: true, type: 'success', title: 'Success!', message: data.message });
               setSupportMode(null);
-              setSupportData({ productId: '', itemId: '', message: '', rating: 5, reason: '' });
+              setSupportData({ productId: '', itemId: '', message: '', rating: 5, reason: '', files: [] });
           } else {
               const err = await res.json();
               setAlertState({ show: true, type: 'error', title: 'Submission Failed', message: err.error || "Failed to submit request." });
@@ -158,6 +217,14 @@ export default function MyOrdersPage() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#fff5f4] to-transparent rounded-bl-full pointer-events-none opacity-70 group-hover:scale-110 transition-transform duration-700"></div>
             
             <div className="relative z-10 text-center md:text-left">
+                <button 
+                    onClick={() => router.back()} 
+                    className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-[#F76D82] transition-colors uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-full w-fit mx-auto md:mx-0 border border-slate-100"
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Go Back
+                </button>
+
                 <div className="inline-block bg-[#fff5f4] px-5 py-1.5 rounded-full border border-[#FFAFA8]/30 text-xs font-bold tracking-widest uppercase mb-4 text-[#ff8a80] shadow-sm">
                     Order History
                 </div>
@@ -186,8 +253,19 @@ export default function MyOrdersPage() {
                     const deliveryInfo = getDeliveryInfo(order.orderdate);
                     const showDeliveryBadge = ['Processing', 'Pending'].includes(order.status) && !deliveryInfo.isExpired;
 
+                    // --- HIGHLIGHT STYLING ---
+                    const isHighlighted = highlightId === String(order.orderid);
+
                     return (
-                        <div key={order.orderid} className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 hover:border-[#FFAFA8] hover:shadow-md transition-all duration-300 group">
+                        <div 
+                            id={`order-${order.orderid}`} 
+                            key={order.orderid} 
+                            className={`p-6 md:p-8 rounded-[2rem] shadow-sm border transition-all duration-700 group ${
+                                isHighlighted 
+                                ? 'bg-[#fffafa] border-[#FFAFA8] ring-4 ring-[#FFAFA8]/30 scale-[1.02]' 
+                                : 'bg-white border-slate-200 hover:border-[#FFAFA8] hover:shadow-md'
+                            }`}
+                        >
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                                 <div>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">ORDER #{order.orderid}</span>
@@ -261,7 +339,7 @@ export default function MyOrdersPage() {
       {/* --- CUSTOM ALERT DIALOG --- */}
       {alertState.show && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 transform transition-all scale-100">
+           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border border-slate-100 relative transform transition-all scale-100">
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-md border-4 border-white ${alertState.type === 'success' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
                 {alertState.type === 'success' ? (
                     <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
@@ -283,10 +361,10 @@ export default function MyOrdersPage() {
 
       {/* --- ORDER DETAILS MODAL (WITH SUPPORT HUB) --- */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setSelectedOrder(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in" onClick={() => { setSelectedOrder(null); setSupportData({...supportData, files: []}); }}>
             <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative animate-scale-up border border-slate-100 custom-scrollbar flex flex-col md:flex-row gap-10" onClick={e => e.stopPropagation()}>
                 
-                <button onClick={() => setSelectedOrder(null)} className="absolute top-8 right-8 w-10 h-10 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-400 hover:text-rose-500 transition-colors leading-none z-10 shadow-sm">
+                <button onClick={() => { setSelectedOrder(null); setSupportData({...supportData, files: []}); }} className="absolute top-8 right-8 w-10 h-10 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-400 hover:text-rose-500 transition-colors leading-none z-10 shadow-sm">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 
@@ -388,7 +466,7 @@ export default function MyOrdersPage() {
                         </div>
                     ) : (
                         <div className="bg-white rounded-2xl animate-fade-in flex flex-col h-full">
-                            <button type="button" onClick={() => setSupportMode(null)} className="text-xs font-bold text-slate-400 hover:text-[#ff8a80] mb-6 flex items-center gap-1.5 transition-colors w-fit group/back">
+                            <button type="button" onClick={() => { setSupportMode(null); setSupportData({...supportData, files: []}); }} className="text-xs font-bold text-slate-400 hover:text-[#ff8a80] mb-6 flex items-center gap-1.5 transition-colors w-fit group/back">
                                 <svg className="w-4 h-4 group-hover/back:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                                 Back to Menu
                             </button>
@@ -448,7 +526,7 @@ export default function MyOrdersPage() {
                                     </label>
                                     <textarea 
                                         required
-                                        rows={5}
+                                        rows={4}
                                         placeholder={
                                             supportMode === 'complaint' ? "Tell us what went wrong..." :
                                             supportMode === 'review' ? "What did you love (or hate) about it?" :
@@ -462,6 +540,34 @@ export default function MyOrdersPage() {
                                         className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-[#FFAFA8] focus:border-[#FFAFA8] text-slate-800 font-medium resize-none flex-grow shadow-inner transition-all placeholder:text-slate-400"
                                     ></textarea>
                                 </div>
+
+                                {(supportMode === 'complaint' || supportMode === 'return' || supportMode === 'review') && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2 mt-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Attach Images (Optional)</label>
+                                            <span className="text-[10px] font-bold text-slate-400">{supportData.files.length}/3</span>
+                                        </div>
+                                        
+                                        {supportData.files.length > 0 && (
+                                            <div className="flex gap-3 mb-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                                {supportData.files.map((file, i) => (
+                                                    <div key={i} className="relative w-14 h-14 rounded-xl overflow-hidden border border-slate-200 group">
+                                                        <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                                        <button type="button" onClick={() => removeSupportFile(i)} className="absolute inset-0 bg-rose-500/80 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition flex items-center justify-center">Del</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <label className={`w-full h-12 bg-slate-50 rounded-xl flex items-center justify-center border-2 border-dashed border-slate-200 text-slate-500 font-medium text-xs cursor-pointer transition ${supportData.files.length >= 3 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white hover:border-[#FFAFA8] hover:text-[#ff8a80]'}`}>
+                                            <input type="file" multiple className="hidden" accept="image/*" onChange={handleSupportFileChange} disabled={supportData.files.length >= 3}/>
+                                            <span className="flex items-center gap-2">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                                Upload Photos
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
 
                                 <button 
                                     type="submit" 

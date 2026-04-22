@@ -1,3 +1,9 @@
+// ==========================================
+// File: route.ts
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 

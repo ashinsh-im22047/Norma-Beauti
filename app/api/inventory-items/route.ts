@@ -1,3 +1,9 @@
+// ==========================================
+// File: route.ts
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
@@ -23,9 +29,10 @@ export async function POST(req: Request) {
     if (categoryType === 'product') {
        const newId = `prod_${Date.now()}`;
        
+       // --- ENHANCEMENT: AUTO SET CUSTOM BOX STATUS TO PENDING ---
        await db.query(
-         'INSERT INTO product (productid, productname, price, availablequantity, productdescription, imageurl, min_stock, variants, features) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-         [newId, name, price, quantity, description, image, safeMinStock, safeVariants, safeFeatures]
+         'INSERT INTO product (productid, productname, price, availablequantity, productdescription, imageurl, min_stock, variants, features, custom_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+         [newId, name, price, quantity, description, image, safeMinStock, safeVariants, safeFeatures, 'pending']
        );
        
        return NextResponse.json({ message: "Product added", id: newId });
@@ -64,8 +71,45 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const categoryId = searchParams.get('categoryId') || '';
+    const categoryId = searchParams.get('categoryId');
     
+    // --- FIX: If no category is requested, return ALL inventory from BOTH tables ---
+    if (!categoryId) {
+        const [productRows]: any = await db.query('SELECT * FROM product');
+        const [itemRows]: any = await db.query('SELECT * FROM item');
+
+        const formattedProducts = productRows.map((r: any) => ({
+          id: r.productid, 
+          name: r.productname, 
+          price: r.price, 
+          quantity: r.availablequantity, 
+          desc: r.productdescription, 
+          image: r.imageurl,
+          status: r.custom_status || 'pending', 
+          minStock: r.min_stock, 
+          variants: r.variants, 
+          features: r.features, 
+          type: 'product'
+        }));
+
+        const formattedItems = itemRows.map((r: any) => ({
+          id: r.itemid, 
+          name: r.itemname, 
+          price: r.itemprice, 
+          quantity: r.itemquantity, 
+          desc: r.itemdescription, 
+          image: r.imageurl, 
+          minStock: r.min_stock, 
+          variants: [], // Items do not have variants
+          features: [], // Items do not have features
+          type: 'item'
+        }));
+
+        // Combine both arrays and return
+        return NextResponse.json([...formattedProducts, ...formattedItems]);
+    }
+
+    // --- Original Category Logic ---
     const isItemCategory = categoryId.toLowerCase().includes('ready') || categoryId.includes('cat_ready'); 
 
     if (isItemCategory) {
@@ -79,8 +123,8 @@ export async function GET(req: Request) {
          desc: r.itemdescription, 
          image: r.imageurl, 
          minStock: r.min_stock, 
-         variants: [], // Items do not have variants
-         features: [], // Items do not have features
+         variants: [], 
+         features: [], 
          type: 'item'
        }));
        return NextResponse.json(formatted);

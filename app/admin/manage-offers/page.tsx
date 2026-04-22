@@ -1,3 +1,9 @@
+// ==========================================
+// File: page.tsx
+// Description: This file contains core code for the NornaBeauti application.
+// It handles specific UI components, API routes, or utility functions.
+// ==========================================
+
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -65,6 +71,7 @@ export default function ManageOffersPage() {
   };
   const closeAlert = () => setAlertState({ ...alertState, show: false });
 
+  // Delete Offer
   const handleDelete = (id: string) => {
     setAlertState({
         show: true, title: "Confirm Delete", message: "Are you sure you want to permanently delete this offer?", type: "confirm",
@@ -76,7 +83,7 @@ export default function ManageOffersPage() {
         }
     });
   };
-
+  //edit offer
   const handleEdit = (offer: any) => {
       setIsEditing(true);
       setFormData({
