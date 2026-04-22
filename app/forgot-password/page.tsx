@@ -31,7 +31,7 @@ export default function ForgotPassword() {
       router.push(alertState.redirectPath);
     }
   };
-
+// --- HANDLE PASSWORD RESET ---
   const handleReset = async () => {
     // 1. Check if email is empty
     if (!email) {

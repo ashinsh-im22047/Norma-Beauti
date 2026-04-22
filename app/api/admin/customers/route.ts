@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// --- FORCE DYNAMIC RENDERING FOR REAL-TIME UPDATES ---
 export async function GET() {
   try {
     // 1. Fetch Users + Customer Info (Using exact column names from your screenshots)

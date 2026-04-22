@@ -34,6 +34,7 @@ export default function Login() {
     }
   };
 
+  // --- LOGIN HANDLER WITH EMAIL VERIFICATION CHECK ---
   const handleLogin = async () => {
     setLoading(true);
     try {

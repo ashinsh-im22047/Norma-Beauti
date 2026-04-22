@@ -25,6 +25,7 @@ export default function ContactPage() {
     show: false, title: '', message: '', type: 'success' 
   });
 
+  // Handle form input changes and update state
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -35,7 +36,7 @@ export default function ContactPage() {
           router.push('/shop'); // Redirect to shop or home after success
       }
   };
-
+// Handle form submission, validate inputs, and communicate with backend API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     

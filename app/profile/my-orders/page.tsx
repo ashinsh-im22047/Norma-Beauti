@@ -69,6 +69,7 @@ export default function MyOrdersPage() {
       }
   }, [highlightId, orders]);
 
+  // Calculate delivery date range and check if it's expired based on order date and current settings
   const getDeliveryInfo = (orderDateString: string) => {
     const baseDate = new Date(orderDateString);
     const start = new Date(baseDate); start.setDate(start.getDate() + deliveryDays.min);
@@ -83,7 +84,7 @@ export default function MyOrdersPage() {
     
     return { text, isExpired };
   };
-
+// Fetch orders from the backend API and handle loading state
   const fetchOrders = async () => {
     try {
       const res = await fetch('/api/orders');
@@ -95,6 +96,7 @@ export default function MyOrdersPage() {
     finally { setLoading(false); }
   };
 
+  // Open a confirmation dialog for canceling or deleting an order, setting the appropriate title and message based on the action type
   const openConfirmDialog = (type: 'cancel' | 'delete', orderId: string) => {
     if (type === 'cancel') {
         setConfirmDialog({ show: true, type: 'cancel', orderId, title: 'Cancel Order?', message: 'Are you sure you want to cancel this order? This action cannot be undone.' });
@@ -102,7 +104,7 @@ export default function MyOrdersPage() {
         setConfirmDialog({ show: true, type: 'delete', orderId, title: 'Delete History?', message: 'This will permanently remove this order from your history.' });
     }
   };
-
+// Handle the confirmation action for canceling or deleting an order by sending a DELETE request to the backend API with the order ID and action type, then refreshing the orders list or showing an error alert based on the response
   const handleConfirmAction = async () => {
     const { type, orderId } = confirmDialog;
     setConfirmDialog({ ...confirmDialog, show: false }); 
@@ -120,6 +122,7 @@ export default function MyOrdersPage() {
     }
   };
 
+  // When viewing order details, fetch the items for that order and handle loading state
   const handleViewDetails = async (order: any) => {
     setSelectedOrder(order);
     setSupportMode(null);
@@ -132,6 +135,7 @@ export default function MyOrdersPage() {
     } catch (error) { console.error("Details error", error); } 
     finally { setLoadingDetails(false); }
   };
+
 
   const handleSupportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files) {

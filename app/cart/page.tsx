@@ -36,6 +36,7 @@ export default function CartPage() {
       fetchDeliverySettings();
   }, []);
 
+  // Fetch delivery fee from settings API to ensure it's always up-to-date without hardcoding
   const fetchDeliverySettings = async () => {
       try {
           const res = await fetch('/api/settings');
@@ -49,7 +50,7 @@ export default function CartPage() {
           console.error("Failed to load delivery settings", error);
       }
   };
-
+// Fetch cart items from API and handle errors gracefully
   const fetchCart = async () => {
     try {
       const res = await fetch('/api/cart');
@@ -71,6 +72,7 @@ export default function CartPage() {
       return;
     }
 
+    // Prevent multiple clicks and show loading state
     setIsCheckingOut(true);
 
     try {
@@ -150,10 +152,11 @@ export default function CartPage() {
     }
   };
 
+  // --- CONFIRMATION DIALOG FOR ITEM DELETION ---
   const openDeleteDialog = (id: string, type: string, name: string) => {
     setConfirmDialog({ show: true, itemId: id, itemType: type, itemName: name });
   };
-
+// Handle item deletion after confirmation and refresh cart
   const confirmDelete = async () => {
     try {
       const { itemId, itemType } = confirmDialog;
@@ -237,6 +240,7 @@ export default function CartPage() {
     }
   };
 
+  // Toggle item selection for checkout and update totals accordingly
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedItems);
     newSet.has(id) ? newSet.delete(id) : newSet.add(id);

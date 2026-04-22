@@ -100,7 +100,7 @@ function ProductListContent() {
     };
     fetchAllReviews();
   }, []);
-
+// --- REVIEW FILTERING FUNCTION (Handles both product and item reviews) ---
   const getReviewsForProduct = (cardId: string) => {
       if (!cardId) return [];
       const normalizedCardId = String(cardId).toLowerCase(); 
@@ -113,7 +113,7 @@ function ProductListContent() {
           return matchId && isNotHidden;
       });
   };
-
+// --- MAIN DATA FETCHER ---
   useEffect(() => { 
     if(categoryId) { fetchData(); if (isReadyMade) fetchAvailableProducts(); }
     const closeMenu = () => setActiveMenuId(null);
@@ -136,6 +136,7 @@ function ProductListContent() {
 
       const combinations = featureValues.reduce((acc, curr) => acc.flatMap(c => curr.map(n => [...c, n])), [[]] as string[][]);
 
+      // Preserve existing variant data where possible
       setFormData(prev => {
           const newVariants = combinations.map(combo => {
               const existing = prev.variants.find(v => JSON.stringify(v.combo) === JSON.stringify(combo));
@@ -146,6 +147,7 @@ function ProductListContent() {
       });
   }, [JSON.stringify(formData.features.map(f => ({ n: f.name, v: f.values.map(val => val.name) })))]);
 
+  // --- API CALLS ---
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -159,6 +161,7 @@ function ProductListContent() {
     } catch(err) { console.error(err); } finally { setIsLoading(false); }
   };
 
+  // --- Fetch Available Products for Ready-Made Items ---
   const fetchAvailableProducts = async () => {
     try {
         const res = await fetch('/api/inventory-items');
@@ -173,6 +176,7 @@ function ProductListContent() {
     } catch (error) { console.error("Failed to load products", error); }
   };
 
+  // --- APPROVE/REJECT HANDLER FOR CUSTOM BOX ITEMS ---
   const handleApproval = async (e: React.MouseEvent, id: string, newStatus: 'approved' | 'rejected') => {
     e.stopPropagation(); 
     try {
@@ -181,6 +185,7 @@ function ProductListContent() {
     } catch (error) { showAlert("Error", "Action failed"); }
   };
 
+  // --- LIST PROCESSOR (SEARCH + SORT) ---
   const getLists = () => {
     let all = [...items];
     if (searchTerm) {
@@ -225,7 +230,8 @@ function ProductListContent() {
           setFormData(prev => { const newV = [...prev.variants]; newV[idx].file = file; return { ...prev, variants: newV }; });
       }
   };
-// Add a New Product
+
+  // --- ADD/EDIT SUBMIT HANDLER (Handles both products and items) ---
   const handleSave = async () => {
       if (!formData.name) return showAlert("Missing Input", "Please fill in the Name field.");
       let finalQuantity = formData.quantity; let finalPrice = formData.price;
@@ -280,7 +286,7 @@ function ProductListContent() {
             image: finalImageUrls[0] || '', images: finalImageUrls, features: formData.features, variants: processedVariants,
             includedProducts: isReadyMade ? formData.selectedProducts : [] 
         };
-//adding or update a inventory product  
+// Determine API route and method based on context (product vs item, add vs edit)  
         let res;
         const submitId = currentItemId;
         if (isEditing && submitId) res = await fetch(`/api/inventory-items/${submitId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -337,6 +343,7 @@ function ProductListContent() {
   
   const resetForm = () => { setShowModal(false); setIsEditing(false); setFilesToUpload([]); setFormData({ name: '', price: '', quantity: '', minStock: '5', description: '', images: [], features: [], variants: [], selectedProducts: [] }); setBoxBuilderView('checklist'); setProductSearch(''); };
   
+// --- SUPPORT: STATUS TOGGLE HANDLER (For Returns and Reviews) ---
   const openEditModal = (item: any) => { 
       setIsEditing(true); 
       setCurrentItemId(item.id || item.productid || item.itemid); 
@@ -352,7 +359,8 @@ function ProductListContent() {
       }); 
       setShowModal(true); setActiveMenuId(null); 
   };
-  
+ 
+  // --- FILE HANDLERS ---
   const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { setFilesToUpload([...filesToUpload, ...Array.from(e.target.files)]); } };
   const removeFileToUpload = (index: number) => setFilesToUpload(filesToUpload.filter((_, i) => i !== index));
   const removeExistingFile = (index: number) => setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
@@ -367,6 +375,7 @@ function ProductListContent() {
       return Math.round((sum / reviews.length) * 10) / 10;
   };
 
+  // --- STAR RENDERER (Supports half stars and no ratings case) ---
   const renderStars = (rating: number) => {
       const fullStars = Math.floor(rating);
       const hasHalfStar = rating % 1 !== 0;
@@ -383,6 +392,7 @@ function ProductListContent() {
       return <div className="flex gap-0.5 items-center">{stars}</div>;
   };
 
+  // --- REVIEW LOADER COMPONENT (Fetches and displays reviews for a product/item) ---
   const ReviewLoader = ({ item, onClick }: { item: any, onClick: (reviews: any[]) => void }) => {
       const [reviews, setReviews] = useState<any[]>([]);
 
@@ -435,6 +445,7 @@ function ProductListContent() {
         }
     }
 
+    // --- REVIEW HANDLER (Opens preview with loaded reviews) ---
     const openPreview = (loadedReviews: any[]) => {
         setPreviewProduct({ ...item, actualReviews: loadedReviews }); 
         setPreviewActiveImage(displayImg);

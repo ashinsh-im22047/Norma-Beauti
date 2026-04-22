@@ -19,6 +19,7 @@ export default function NotificationsPage() {
         fetchNotifications();
     }, []);
 
+// Fetch notifications from the backend API and update the state accordingly, handling loading state and potential errors
     const fetchNotifications = () => {
         fetch('/api/notifications')
             .then(res => res.json())
@@ -28,6 +29,7 @@ export default function NotificationsPage() {
             }).catch(err => setLoading(false));
     };
 
+// Handle click on a notification: if it's unread, mark it as read in the backend, then navigate to the related order details page if a reference ID exists
     const handleNotificationClick = async (notif: any) => {
         if (!notif.is_read) {
             await fetch('/api/notifications', {
@@ -41,7 +43,8 @@ export default function NotificationsPage() {
             router.push(`/profile/my-orders?highlight=${notif.reference_id}`);
         }
     };
-
+    
+// Handle deletion of a notification by sending a DELETE request to the backend API with the notification ID, then refreshing the notifications list if successful
     const handleDelete = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation(); // Prevent triggering the click event of the whole card
         if (confirm("Delete this notification?")) {

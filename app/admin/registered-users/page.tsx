@@ -19,10 +19,12 @@ export default function RegisteredUsersPage() {
   // Modal State
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
 
+  // --- FETCH CUSTOMERS ON MOUNT ---
   useEffect(() => {
     fetchCustomers();
   }, []);
 
+  /// --- FUNCTION TO FETCH CUSTOMERS FROM API ---
   const fetchCustomers = async () => {
     try {
       const res = await fetch('/api/admin/customers');
@@ -37,6 +39,7 @@ export default function RegisteredUsersPage() {
     }
   };
 
+ // --- FILTER CUSTOMERS BASED ON SEARCH TERM ---
   const filteredCustomers = customers.filter(c => 
       (c.name && c.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||

@@ -22,6 +22,7 @@ export default function WishlistPage() {
     fetchWishlist(); 
   }, []);
 
+  // Fetch the user's wishlist items from the backend API and update the component state accordingly, handling loading state and any potential errors during the fetch process
   const fetchWishlist = async () => {
     try {
       const res = await fetch('/api/whishlist'); // Matching your folder name
@@ -36,6 +37,7 @@ export default function WishlistPage() {
     }
   };
 
+  // Handle the confirmation and execution of deleting an item from the wishlist by sending a DELETE request to the backend API with the relevant item details, refreshing the wishlist upon successful deletion, and managing the confirmation dialog state
   const confirmDelete = async () => {
     try {
       const { itemId, itemType } = confirmDialog;

@@ -57,7 +57,7 @@ function CreateProfileContent() {
         }
     }
   };
-
+// Handle form submission with validation and API communication
   const handleSubmit = async () => {
     // 1. Phone Number Validation
     if (phoneDigits.length !== 9) {

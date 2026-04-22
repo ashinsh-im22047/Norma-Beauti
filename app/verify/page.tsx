@@ -24,6 +24,7 @@ function VerifyContent() {
       return;
     }
 
+    // Function to verify the user's email by sending the token to the backend API and handling the response accordingly, updating the UI based on the verification status and providing feedback to the user
     const verifyUser = async () => {
       try {
         const res = await fetch('/api/verify', {

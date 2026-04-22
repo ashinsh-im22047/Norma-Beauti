@@ -31,6 +31,7 @@ export default function NotificationsPage() {
     if (savedRead) setReadNotifs(new Set(JSON.parse(savedRead)));
     if (savedDeleted) setDeletedNotifs(new Set(JSON.parse(savedDeleted)));
 
+    // Fetch notifications from the server
     const fetchNotifications = async () => {
       try {
         const res = await fetch('/api/admin/notifications');
@@ -53,6 +54,7 @@ export default function NotificationsPage() {
   const activeNotifications = notifications.filter(n => !deletedNotifs.has(n.id));
   const unreadCount = activeNotifications.filter(n => !readNotifs.has(n.id)).length;
 
+  /// --- Apply filter based on user selection ---
   const visibleNotifications = activeNotifications.filter(n => {
       const isRead = readNotifs.has(n.id);
       if (filter === 'unread' && isRead) return false;
@@ -60,6 +62,7 @@ export default function NotificationsPage() {
       return true;
   });
 
+  /// --- HANDLER FOR VIEWING NOTIFICATION DETAILS ---
   const handleViewClick = (notif: any) => {
       const newReadSet = new Set(readNotifs);
       newReadSet.add(notif.id);
@@ -69,6 +72,7 @@ export default function NotificationsPage() {
       router.push(notif.link || '/admin/dashboard');
   };
 
+  /// --- TOGGLE SELECTION FOR BULK ACTIONS ---
   const toggleSelection = (id: string) => {
       const newSet = new Set(selectedNotifs);
       newSet.has(id) ? newSet.delete(id) : newSet.add(id);
@@ -82,6 +86,7 @@ export default function NotificationsPage() {
       setSelectedNotifs(new Set()); // Clear selection after delete
   };
 
+  // --- HANDLERS FOR DIFFERENT DELETE OPTIONS ---
   const handleDeleteSelected = () => {
       if (selectedNotifs.size === 0) return;
       const newDeleted = new Set(deletedNotifs);
@@ -89,6 +94,7 @@ export default function NotificationsPage() {
       saveDeleted(newDeleted);
   };
 
+  /// --- DELETE ALL READ NOTIFICATIONS ---
   const handleDeleteRead = () => {
       const newDeleted = new Set(deletedNotifs);
       activeNotifications.forEach(n => {
@@ -97,6 +103,7 @@ export default function NotificationsPage() {
       saveDeleted(newDeleted);
   };
 
+  /// --- DELETE ALL NOTIFICATIONS ---
   const handleDeleteAll = () => {
       const newDeleted = new Set(deletedNotifs);
       activeNotifications.forEach(n => newDeleted.add(n.id));

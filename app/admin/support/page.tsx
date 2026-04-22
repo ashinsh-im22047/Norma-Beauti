@@ -38,6 +38,7 @@ export default function AdminSupportPage() {
     fetchSupportData();
   }, []);
 
+  // --- FUNCTION TO FETCH SUPPORT DATA (REVIEWS, COMPLAINTS, RETURNS) ---
   const fetchSupportData = async () => {
     try {
       const res = await fetch('/api/admin/support');
@@ -49,12 +50,14 @@ export default function AdminSupportPage() {
     }
   };
 
+  // --- TOGGLE SELECTION FOR BULK ACTIONS ---
   const toggleSelection = (id: string) => {
       const newSet = new Set(selectedItems);
       newSet.has(id) ? newSet.delete(id) : newSet.add(id);
       setSelectedItems(newSet);
   };
 
+  // --- HANDLER FOR BULK DELETE ACTION ---
   const handleBulkDelete = () => {
       if (selectedItems.size === 0) return;
       setConfirmDelete({ 
@@ -64,6 +67,7 @@ export default function AdminSupportPage() {
       });
   };
 
+  // --- HANDLER FOR SINGLE REVIEW DELETION ---
   const handleDeleteReview = (id: string) => {
       setConfirmDelete({ 
           show: true, 
@@ -73,6 +77,7 @@ export default function AdminSupportPage() {
       });
   };
 
+  // --- EXECUTE DELETE ACTION (BULK OR SINGLE) ---
   const executeDelete = async () => {
       setConfirmDelete({ ...confirmDelete, show: false }); 
       
@@ -109,6 +114,7 @@ export default function AdminSupportPage() {
       }
   };
 
+  // --- HANDLER FOR UPDATING COMPLAINT STATUS OR RETURN REQUESTS ---
   const handleUpdateComplaintStatus = async (id: string, status: string) => {
       try {
           const res = await fetch('/api/admin/support', {
@@ -123,6 +129,7 @@ export default function AdminSupportPage() {
       }
   };
 
+  // --- HANDLER FOR APPROVING/DECLINING RETURN REQUESTS WITH OPTIONAL ADMIN REPLY ---
   const handleToggleHideReview = async (id: string, currentHiddenStatus: boolean) => {
       try {
           const res = await fetch('/api/admin/support', {
@@ -140,6 +147,7 @@ export default function AdminSupportPage() {
       }
   };
 
+  // --- HANDLER FOR APPROVING/DECLINING RETURN REQUESTS WITH OPTIONAL ADMIN REPLY ---
   const handleProcessAction = async () => {
       try {
           const payload = actionModal.type === 'return' 
@@ -162,6 +170,7 @@ export default function AdminSupportPage() {
       }
   };
 
+  // --- UTILITY FUNCTION TO PARSE IMAGES FROM RETURN REQUESTS ---
   const parseImages = (imgStr: any) => {
       if (!imgStr) return [];
       if (Array.isArray(imgStr)) return imgStr;

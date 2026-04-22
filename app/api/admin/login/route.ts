@@ -9,6 +9,7 @@ import { db } from '@/lib/db';
 import bcrypt from 'bcrypt';
 import { SignJWT } from 'jose'; 
 
+// --- FORCE DYNAMIC RENDERING FOR REAL-TIME UPDATES ---
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();

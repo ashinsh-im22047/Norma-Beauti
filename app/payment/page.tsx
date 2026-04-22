@@ -31,6 +31,7 @@ export default function PaymentPage() {
     if (alertState.redirect) router.push(alertState.redirect);
   };
 
+  // Load cart items, user profile, and settings on component mount
   useEffect(() => {
     const storedItems = localStorage.getItem('checkoutItems');
     if (storedItems) setItems(JSON.parse(storedItems));
@@ -54,6 +55,7 @@ export default function PaymentPage() {
 
   }, [router]);
 
+  // Calculate and format estimated delivery date range based on current date and settings
   const getDeliveryDates = () => {
     const today = new Date();
     const start = new Date(today); start.setDate(today.getDate() + deliveryDays.min);
@@ -61,18 +63,20 @@ export default function PaymentPage() {
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
     return `${start.toLocaleDateString(undefined, options)} - ${end.toLocaleDateString(undefined, options)}`;
   };
-
+// Handle phone number input, ensuring only digits are entered and formatted with +94 country code
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const numbersOnly = val.replace(/[^0-9]/g, '');
     if (numbersOnly.length <= 9) setDetails({ ...details, phone: `+94${numbersOnly}` });
   };
 
+  // Extract digits from phone number for validation, ensuring it starts with +94 and has exactly 9 digits after
   const getPhoneDigits = () => {
     if (!details.phone) return '';
     return details.phone.startsWith('+94') ? details.phone.slice(3) : details.phone;
   };
 
+  // Handle file input change for payment slip upload, converting the selected image to a base64 string for storage and later submission to the backend
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -82,6 +86,7 @@ export default function PaymentPage() {
     }
   };
 
+// Handle the final order placement process, including validation of user inputs, preparation of order data, communication with the backend API, and user feedback through alerts
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,6 +134,7 @@ export default function PaymentPage() {
     }
   };
 
+  // Calculate total amounts for items and final payable amount including delivery fee, ensuring that if there are no items the total is shown as 0
   const itemsTotal = items.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
   const finalTotal = itemsTotal > 0 ? itemsTotal + deliveryFee : 0;
 

@@ -43,7 +43,7 @@ export default function InventoryManagement() {
     message: '', 
     type: 'success'
   });
-
+// --- CUSTOM ALERT HANDLERS ---
   const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => {
     setAlertState({ show: true, title, message, type });
   };
@@ -58,6 +58,8 @@ export default function InventoryManagement() {
     window.addEventListener('click', closeMenu);
     return () => window.removeEventListener('click', closeMenu);
   }, []);
+
+  // --- FETCH CATEGORIES (Called on component mount and after add/edit/delete) ---
 
   const fetchCategories = async () => {
     try {
@@ -89,6 +91,7 @@ export default function InventoryManagement() {
     ); 
   };
 
+  // --- MENU TOGGLE HANDLER (For the 3-dot menu on each card) ---
   const toggleMenu = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -121,6 +124,7 @@ export default function InventoryManagement() {
     });
   };
 
+  // --- FORM SUBMISSION HANDLER (Handles both Add and Edit for Categories) ---
   const handleSave = async () => {
     const payload = { name: currentCat.name, description: currentCat.description };
     try {
@@ -147,6 +151,7 @@ export default function InventoryManagement() {
     }
   };
 
+  // --- OPEN MODAL HANDLERS ---
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentCat({ id: '', name: '', description: '' });

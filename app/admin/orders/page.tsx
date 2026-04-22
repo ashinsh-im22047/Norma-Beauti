@@ -53,6 +53,7 @@ function OrdersContent() {
   // STATUS OPTIONS
   const STATUS_OPTIONS = ["Processing", "Delivered", "Cancelled", "Rejected", "Pending"];
 
+  // --- FETCH ORDERS ON MOUNT ---
   useEffect(() => {
     fetchOrders();
     fetchDeliverySettings();
@@ -64,6 +65,7 @@ function OrdersContent() {
     }
   }, []);
 
+  // --- FETCH ORDERS FUNCTION ---
   const fetchOrders = async () => {
     try {
       const res = await fetch('/api/admin/orders');
@@ -83,7 +85,7 @@ function OrdersContent() {
       setLoading(false);
     }
   };
-
+// Estimate delivery date updates
   const fetchDeliverySettings = async () => {
       try {
           const res = await fetch('/api/settings');
@@ -98,6 +100,7 @@ function OrdersContent() {
       }
   };
 
+  // --- HANDLER FOR SAVING DELIVERY TIME SETTINGS ---
   const handleSaveSettings = async (e: React.FormEvent) => {
       e.preventDefault();
       
@@ -130,7 +133,7 @@ function OrdersContent() {
           setSavingSettings(false);
       }
   };
-
+// Delivery Fee updates
   const handleSaveFeeSettings = async (e: React.FormEvent) => {
       e.preventDefault();
       const fee = parseFloat(deliveryFee);
@@ -161,7 +164,7 @@ function OrdersContent() {
           setSavingSettings(false);
       }
   };
-
+// Handle Status Change with Auto-Notification and Stock Refund Logic
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     setOrders(orders.map(o => o.orderid === orderId ? { ...o, status: newStatus } : o));
 
@@ -176,7 +179,7 @@ function OrdersContent() {
         fetchOrders(); // Revert on error
     }
   };
-
+// Handle View Details with "Mark as Viewed" Logic
   const handleViewDetails = async (order: any) => {
     setSelectedOrder(order);
     setLoadingItems(true);
@@ -188,7 +191,7 @@ function OrdersContent() {
         setViewedOrders(newViewed);
         localStorage.setItem('adminViewedOrders', JSON.stringify(newViewed));
     }
-
+// Fetch Order Items
     try {
         const res = await fetch(`/api/admin/order-item?orderId=${order.orderid}`);
         if (res.ok) {
@@ -237,7 +240,7 @@ function OrdersContent() {
 
       return true;
   });
-
+// Calculate total amount for visible orders
   const visibleTotal = filteredOrders.reduce((acc, order) => acc + parseFloat(order.totalamount || 0), 0);
 
   if (loading) return (
@@ -245,7 +248,7 @@ function OrdersContent() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFAFA8]"></div>
       </div>
   );
-
+// Main return with Suspense for modals
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-24">
       

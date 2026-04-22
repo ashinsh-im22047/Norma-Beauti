@@ -57,6 +57,7 @@ export default function ShopPage() {
     if (redirectPath) router.push(redirectPath);
   };
 
+  // Fetch active offers from the backend API and return them as JSON, handling any errors that may occur during the fetch process
   const fetchActiveOffers = async () => {
       try {
           const res = await fetch('/api/offers');
@@ -69,6 +70,7 @@ export default function ShopPage() {
       return [];
   };
 
+  // Fetch products based on the selected category and active offers, enhancing product data with offer details and new arrival status, while managing loading state and resetting filters
   const fetchProductsByCategory = useCallback(async (catId: string, currentOffers: any[]) => {
     setIsLoadingProducts(true);
     try {
@@ -126,6 +128,7 @@ export default function ShopPage() {
     finally { setIsLoadingProducts(false); }
   }, []);
 
+  // On component mount and whenever the active category changes, fetch the relevant products and offers from the backend API, ensuring that the product list is updated based on the selected category and any active promotions
   useEffect(() => { 
       const loadAllData = async () => {
           const offers = await fetchActiveOffers(); 
@@ -134,6 +137,7 @@ export default function ShopPage() {
       loadAllData();
   }, [activeCategory, fetchProductsByCategory]);
 
+  // Whenever the search term, sorting option, price filters, or product list changes, apply the relevant filters and sorting to the product list and update the displayed products accordingly, ensuring that customers see a refined list of products based on their preferences
   useEffect(() => {
     let result = [...products];
     if (searchTerm) result = result.filter(item => (item.name || item.productname || item.itemname || '').toLowerCase().includes(searchTerm.toLowerCase()));
@@ -147,6 +151,7 @@ export default function ShopPage() {
     setFilteredProducts(result);
   }, [searchTerm, sortOption, minPrice, maxPrice, products]);
 
+  // Handle adding a product to the shopping cart by checking for user authentication, sending a POST request to the backend API with the product details and quantity, and providing feedback to the user through alerts based on the success or failure of the operation
   const handleAddToCart = async (item: any, quantity: number = 1) => {
     const storedUserId = localStorage.getItem('userId');
     const storedSession = document.cookie.includes("user_session=true");
@@ -203,6 +208,7 @@ export default function ShopPage() {
       setAlertState({ show: true, title: 'Added to Box', message: `${quantity}x ${newItem.name} added to your Custom Gift Box.`, type: 'success', redirect: '' });
   };
 
+  // Handle the process of adding a custom-built gift box to the shopping cart by validating the box contents, checking user authentication, creating a new inventory item for the custom box through the backend API, and then adding that item to the cart while providing appropriate feedback to the user based on the success or failure of each step
   const handleAddCustomBoxToCart = async () => {
       if (customBoxItems.length === 0) {
           setAlertState({ show: true, title: 'Empty Box', message: 'Please add some products to your box first.', type: 'error', redirect: '' });
@@ -284,6 +290,7 @@ export default function ShopPage() {
       }
   };
 
+  // Handle pagination for the new arrivals and offers sections by updating the current slide index based on user interaction, ensuring that the displayed products cycle through the available items in a seamless manner
   const nextSlide = () => setSlideIndex(prev => (prev + itemsPerSlide < categoryNewArrivals.length ? prev + 1 : 0));
   const prevSlide = () => setSlideIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, categoryNewArrivals.length - itemsPerSlide)));
   

@@ -35,6 +35,7 @@ export default function ReportsPage() {
       recentTransactions: [] as { id: string, customer: string, date: string, amount: number, status: string }[] 
   });
 
+  // --- HANDLER FOR GENERATING REPORTS BASED ON SELECTED CRITERIA ---
   const handleGenerate = async () => {
       if (filter === 'Custom Range' && (!startDate || !endDate)) {
           alert("Please select both start and end dates.");

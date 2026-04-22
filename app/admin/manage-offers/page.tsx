@@ -66,6 +66,7 @@ export default function ManageOffersPage() {
     }
   };
 
+  // --- CUSTOM ALERT HANDLERS ---
   const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => {
     setAlertState({ show: true, title, message, type });
   };
@@ -97,6 +98,7 @@ export default function ManageOffersPage() {
       setShowModal(true);
   };
 
+  // --- FORM SUBMISSION HANDLER (Handles both Add and Edit for Offers) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -123,6 +125,7 @@ export default function ManageOffersPage() {
     } catch (error) { showAlert("System Error", "Something went wrong."); }
   };
 
+  // --- MODAL CLOSE HANDLER (Resets form and state) ---
   const closeModal = () => {
       setShowModal(false); setIsEditing(false); setProductSearch(''); setItemSearch('');
       setFormData({ 
@@ -131,6 +134,7 @@ export default function ManageOffersPage() {
       });
   };
 
+  // --- TOGGLE SELECTION HANDLERS (For Products and Items in the offer) ---
   const toggleProduct = (id: string) => setFormData(prev => ({ ...prev, selectedProducts: prev.selectedProducts.includes(id) ? prev.selectedProducts.filter(p => p !== id) : [...prev.selectedProducts, id] }));
   const toggleItem = (id: string) => setFormData(prev => ({ ...prev, selectedItems: prev.selectedItems.includes(id) ? prev.selectedItems.filter(i => i !== id) : [...prev.selectedItems, id] }));
 
